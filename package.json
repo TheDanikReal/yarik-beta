@@ -1,0 +1,16 @@
+{
+  "type": "module",
+  "dependencies": {
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.4.7",
+    "lru-cache": "^11.0.2",
+    "openai": "^4.85.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "scripts": {
+    "start": "tsc --build --verbose && node index.js",
+    "test": "tsc --build && node test.js"
+  }
+}

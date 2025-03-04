@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+       "target": "ES2024",
+       "module": "nodenext",
+       "lib": ["ES2024"],
+       "moduleResolution": "nodenext",
+       "allowImportingTsExtensions": true,
+       "rewriteRelativeImportExtensions": true,
+       "verbatimModuleSyntax": true
+    },
+    "files": ["index.ts", "deploy.ts", "api.ts"],
+    "include": ["slash", "*.ts"]
+  } 
