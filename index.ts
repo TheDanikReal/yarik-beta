@@ -47,7 +47,7 @@ for (let i = 1; i < 10; i++) {
         // console.log(process.env["API_TOKEN" + i])
         models.set(model, new OpenAI({ baseURL: endpoint, apiKey: token }))
     } else {
-        console.log("not found " + i)
+        console.log("found " + i + " api tokens")
         break
     }
 }
@@ -175,39 +175,43 @@ bot.on(Events.MessageCreate, async (message) => {
         request.push({ role: "system", content: `You are Yarik.\nYour job is to respond to last message from ${message.author.displayName}. You can use other messages for context but don't directly address them. DO NOT output an empty message. ALWAYS reply. NO EMPTY MESSAGE. you can message many times in a row. just continue the conversation. do not reply with empty message.\nabout Yarik: A friend who helps with problems. I have a YouTube channel with 1 thousand subscribers.\npersonality traits: smart` })
         request.reverse()
         message.channel.sendTyping()
-        const response = await client.chat.completions.create({
-            messages: request,
-            temperature: 1.0,
-            top_p: 1.0,
-            model: process.env.MODEL_NAME
-        })
-        let additionalData = `-# ${response.usage.total_tokens} tokens used`
-        if (message.attachments.size) {
-            additionalData += ", attachments were ignored"
-        }
-        const answer = response.choices[0].message.content + "\n" + additionalData
-        // console.log(request)
-        if (answer.length / 2000 >= 1) {
-            let messages = await linePage(answer)
-            if (!messages) {
-                messages = await simplePage(answer)
+        try {
+            const response = await client.chat.completions.create({
+                messages: request,
+                temperature: 1.0,
+                top_p: 1.0,
+                model: process.env.MODEL_NAME
+            })
+            let additionalData = `-# ${response.usage.total_tokens} tokens used`
+            if (message.attachments.size) {
+                additionalData += ", attachments were ignored"
             }
-            let savedId = false
-            let reply: OmitPartialGroupDMChannel<Message<boolean>>
-            for (let pagedMessage of messages) {
-                if (!savedId) {
-                    reply = await message.reply({ content: pagedMessage })
-                } else {
-                    await message.reply(pagedMessage)
+            const answer = response.choices[0].message.content + "\n" + additionalData
+            // console.log(request)
+            if (answer.length / 2000 >= 1) {
+                let messages = await linePage(answer)
+                if (!messages) {
+                    messages = await simplePage(answer)
                 }
+                let savedId = false
+                let reply: OmitPartialGroupDMChannel<Message<boolean>>
+                for (let pagedMessage of messages) {
+                    if (!savedId) {
+                        reply = await message.reply({ content: pagedMessage })
+                    } else {
+                        await message.reply(pagedMessage)
+                    }
+                }
+                guildCache[message.channelId].set(reply.id, { role: "assistant", 
+                    content: response.choices[0].message.content})
+                return
             }
+            const reply = await message.reply(answer)
             guildCache[message.channelId].set(reply.id, { role: "assistant", 
-                content: response.choices[0].message.content})
-            return
+                content: response.choices[0].message.content })
+        } catch (err) {
+            message.reply("message creation didn't finish successfully")
         }
-        const reply = await message.reply(answer)
-        guildCache[message.channelId].set(reply.id, { role: "assistant", 
-            content: response.choices[0].message.content })
     }
 })
 
@@ -226,8 +230,8 @@ bot.on(Events.InteractionCreate, async (interaction) => {
 //})
 
 bot.on("ready", (ready) => {
-    console.log(ready + " ready")
-    console.log(ready.user.id)
+    console.log(ready.user.displayName + " ready")
+    console.log("logged in as " + ready.user.id)
 })
 
 if (!process.env.TOKEN) {
