@@ -34,6 +34,7 @@ await fetchDiscordStatus()
 const server = http.createServer(async (req, res) => {
     if (discordStatusRefreshed <= Date.now() - 1000 * 60 * 30) {
         await fetchDiscordStatus()
+        console.log("refreshed status")
         discordStatusRefreshed = Date.now()
     }
     if (req.url == "/") {

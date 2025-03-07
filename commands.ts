@@ -1,7 +1,8 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ChatInputCommandInteraction, Message, type CacheType, type OmitPartialGroupDMChannel } from "discord.js"
-import { enabledChannels, userData } from "./index.ts"
+import { enabledChannels, userData, guildCache, cacheSize, bot, type OpenAICompatibleMessage } from "./index.ts"
 import { saveData } from "./button.ts"
 import { setModel } from "./slash.ts"
+import { LRUCache } from "lru-cache"
 
 export function slashCommandHandler(interaction: ChatInputCommandInteraction) {
     switch (interaction.commandName) {
@@ -46,6 +47,28 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
             message.reply("removed channel")
         }
         return true
+    } else if (message.content.includes("fetch")) {
+        console.log(message.content.split(" "))
+        if (!guildCache[message.channelId]) {
+            guildCache[message.channelId] = new LRUCache({
+                max: cacheSize
+            })
+        }
+        const messages = await message.channel.messages.fetch({ limit: 100 })
+        const target = message.content.split(" ")[2] || bot.user.id
+        console.log("target: " + target)
+        let request: Message[] = []
+        for (let entry of messages.entries()) {
+            request.push(entry[1])
+            // guildCache[message.channelId].set()
+        }
+        for (let entry of request) {
+            guildCache[message.channelId].set(entry.id, {
+                role: target == entry.author.id ? "assistant" : "user",
+                content: entry.cleanContent + "\nauthor: " + entry.author.globalName
+            })
+        }
+        message.reply("fetched messages")
     } else {
         console.log(userData.get(message.author.id))
         console.log(message.content)
