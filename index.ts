@@ -181,7 +181,7 @@ bot.on(Events.MessageCreate, async (message) => {
         const request: OpenAICompatibleMessage[] = []
         for (let entry of guildCache[message.channelId].entries()) {
             request.push(entry[1])
-            console.log(entry[0] + ": " + entry[1].content)
+            // console.log(entry[0] + ": " + entry[1].content)
         }
         // request.push({ role: "system", content: "send human-like messages" })
         request.push({ role: "system", content: `You are Yarik.\nYour job is to respond to last message from ${message.author.displayName}. DO NOT output an empty message. ALWAYS reply. NO EMPTY MESSAGE. you can message many times in a row. just continue the conversation. do not reply with empty message.\nabout Yarik: A friend who helps with problems. I have a YouTube channel with 1 thousand subscribers.\npersonality traits: smart` })
