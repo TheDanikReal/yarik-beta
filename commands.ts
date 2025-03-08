@@ -54,7 +54,7 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
                 max: cacheSize
             })
         }
-        const messages = await message.channel.messages.fetch({ limit: 100 })
+        const messages = await message.channel.messages.fetch({ limit: cacheSize })
         const target = message.content.split(" ")[2] || bot.user.id
         console.log("target: " + target)
         let request: Message[] = []
