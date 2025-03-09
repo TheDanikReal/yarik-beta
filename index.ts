@@ -1,5 +1,6 @@
-import { Client, Events, GatewayIntentBits, ButtonBuilder, ActionRowBuilder, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, ChatInputCommandInteraction, type OmitPartialGroupDMChannel, Message } from "discord.js"
-import { buttonCommandHandler, commmandHandler, slashCommandHandler } from "./commands.ts"
+import { Client, Events, GatewayIntentBits, ButtonBuilder, ActionRowBuilder, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, ChatInputCommandInteraction, type OmitPartialGroupDMChannel, Message, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction } from "discord.js"
+import { buttonCommandHandler, commmandHandler, contextMenuHandler, slashCommandHandler } from "./commands.ts"
+import type { ChatCompletionMessageParam } from "openai/resources/index.mjs"
 import { tools, toolDescriptions, type Tools } from "./tools.ts"
 import { promises as fs } from "node:fs"
 import { fileURLToPath } from "node:url"
@@ -7,12 +8,18 @@ import { deserialize } from "node:v8"
 import { LRUCache } from "lru-cache"
 import OpenAI from "openai"
 import "dotenv/config"
-import type { ChatCompletionMessageParam } from "openai/resources/index.mjs"
 
 export interface SlashCommand {
     data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder,
     execute: (interaction: ChatInputCommandInteraction) => {}
 }
+
+export interface ContextMenu {
+    data: ContextMenuCommandBuilder,
+    execute: (interaction: MessageContextMenuCommandInteraction) => {}
+}
+
+export type Interaction = SlashCommand | ContextMenu
 
 export interface UserData {
     model: "gemini-2.0-pro-exp-02-05" | "gpt-4o"
@@ -35,6 +42,8 @@ export const bot = new Client({ intents: [GatewayIntentBits.Guilds, "MessageCont
 const openaiClient = new OpenAI({ apiKey: process.env.API_TOKEN, baseURL: process.env.API_ENDPOINT })
 const models = new Map<string, OpenAI>()
 export const cacheSize = Number(process.env.CACHE_SIZE) || 10
+export const fetchSize = Math.min(cacheSize, 100)
+let modelsCount = 0
 
 for (let i = 1; i < 10; i++) {
     const token = process.env["API_TOKEN" + i]
@@ -44,6 +53,7 @@ for (let i = 1; i < 10; i++) {
         // console.log(process.env["API_TOKEN" + i])
         models.set(model, new OpenAI({ baseURL: endpoint, apiKey: token }))
     } else {
+        modelsCount = i
         console.log("found " + i + " api tokens")
         break
     }
@@ -116,6 +126,17 @@ export async function linePage(str: string): Promise<string[] | false> {
     return messages
 }
 
+export async function getModels(): Promise<string[]> {
+    let result = []
+    result.push(process.env.MODEL_NAME)
+    console.log(modelsCount)
+    for (let i = 1; i < modelsCount; i++) {
+        console.log(process.env["MODEL_NAME" + i])
+    }
+    console.log(result)
+    return result
+}
+
 export async function startBot(): Promise<boolean> {
     try {
         bot.login(process.env.TOKEN)
@@ -125,10 +146,105 @@ export async function startBot(): Promise<boolean> {
     }
 }
 
+export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<boolean>>) {
+    if (!guildCache[message.channelId]) {
+        guildCache[message.channelId] = new LRUCache({
+            max: cacheSize
+        })
+        console.log("created new cache map")
+    }
+    const client = await getClient(message.author.id)
+    let content = message.content
+    let referenceInfo = ""
+    if (message.reference) {
+        const reference = await message.fetchReference()
+        referenceInfo = reference.content
+        content += `\nreplying to message by ${reference.author}: ${referenceInfo}`
+    }
+    guildCache[message.channelId].set(message.id, { role: "user", 
+        content: message.content + "\nauthor: " + message.author.displayName })
+    // const request = await generateRequest(message.channelId, message.author.displayName)
+    const request: OpenAICompatibleMessage[] = []
+    for (let entry of guildCache[message.channelId].entries()) {
+        request.push(entry[1])
+        // console.log(entry[0] + ": " + entry[1].content)
+    }
+    // request.push({ role: "system", content: "send human-like messages" })
+    request.push({ role: "system", content: `You are Yarik.\nYour job is to respond to last message from ${message.author.displayName}. DO NOT output an empty message. ALWAYS reply. NO EMPTY MESSAGE. you can message many times in a row. just continue the conversation. do not reply with empty message.\nabout Yarik: A friend who helps with problems. I have a YouTube channel with 1 thousand subscribers.\npersonality traits: smart` })
+    request.reverse()
+    message.channel.sendTyping()
+    try {
+        let response = await client.chat.completions.create({
+            messages: request,
+            temperature: 1.0,
+            top_p: 1.0,
+            model: process.env.MODEL_NAME,
+            tools: toolDescriptions,
+            tool_choice: "auto"
+        })
+        if (response.choices[0].finish_reason == "tool_calls") {
+            const toolCall = response.choices[0].message.tool_calls[0]
+            guildCache[message.channelId].set(message.id, {
+                role: "assistant",
+                content: response.choices[0].message.content
+            })
+            const functionName = toolCall.function.name
+            const tool = tools[functionName]
+            const toolResponse = tool(JSON.parse(toolCall.function.arguments))
+            guildCache[message.channelId].set(toolCall.id, {
+                tool_call_id: toolCall.id,
+                role: "tool",
+                content: toolResponse
+            })
+            response = await client.chat.completions.create({
+                messages: await generateRequest(message.channelId, message.author.displayName),
+                tools: toolDescriptions,
+                temperature: 1.0,
+                top_p: 1.0,
+                model: process.env.MODEL_NAME
+            })
+            console.log("generated image with prompt " + toolCall.function.arguments + 
+                " with response " + toolResponse)
+        }
+        let additionalData = `-# ${response.usage.total_tokens} tokens used`
+        if (message.attachments.size) {
+            additionalData += ", attachments were ignored"
+        }
+        const answer = response.choices[0].message.content + "\n" + additionalData
+        // console.log(request)
+        if (answer.length / 2000 >= 1) {
+            let messages = await linePage(answer)
+            if (!messages) {
+                messages = await simplePage(answer)
+            }
+            let savedId = false
+            let reply: OmitPartialGroupDMChannel<Message<boolean>>
+            for (let pagedMessage of messages) {
+                if (!savedId) {
+                    reply = await message.reply({ content: pagedMessage })
+                } else {
+                    await message.reply(pagedMessage)
+                }
+            }
+            guildCache[message.channelId].set(reply.id, { role: "assistant", 
+                content: response.choices[0].message.content})
+            return
+        }
+        const reply = await message.reply(answer)
+        guildCache[message.channelId].set(reply.id, { role: "assistant", 
+            content: response.choices[0].message.content })
+    } catch (err) {
+        message.reply("message creation didn't finish successfully")
+        console.log(err)
+    }
+    return
+}
+
 async function getClient(user: string): Promise<OpenAI> {
-    const userClient = models.get(user)
+    const model = userData.get(user)?.model || process.env.API_TOKEN
+    const userClient = models.get(model)
     if (userClient) {
-        // console.log("model found")
+        // console.log("model found: " + userClient.baseURL)
         return userClient
     } else {
         // console.log("model for " + user + " not found")
@@ -161,102 +277,16 @@ bot.on(Events.MessageCreate, async (message) => {
         }
     }
     if (enabledChannels.get(message.channelId)) {
-        if (!guildCache[message.channelId]) {
-            guildCache[message.channelId] = new LRUCache({
-                max: cacheSize
-            })
-            console.log("created new cache map")
-        }
-        const client = await getClient(message.author.id)
-        let content = message.content
-        let referenceInfo = ""
-        if (message.reference) {
-            const reference = await message.fetchReference()
-            referenceInfo = reference.content
-            content += `\nreplying to message by ${reference.author}: ${referenceInfo}`
-        }
-        guildCache[message.channelId].set(message.id, { role: "user", 
-            content: message.content + "\nauthor: " + message.author.displayName })
-        // const request = await generateRequest(message.channelId, message.author.displayName)
-        const request: OpenAICompatibleMessage[] = []
-        for (let entry of guildCache[message.channelId].entries()) {
-            request.push(entry[1])
-            // console.log(entry[0] + ": " + entry[1].content)
-        }
-        // request.push({ role: "system", content: "send human-like messages" })
-        request.push({ role: "system", content: `You are Yarik.\nYour job is to respond to last message from ${message.author.displayName}. DO NOT output an empty message. ALWAYS reply. NO EMPTY MESSAGE. you can message many times in a row. just continue the conversation. do not reply with empty message.\nabout Yarik: A friend who helps with problems. I have a YouTube channel with 1 thousand subscribers.\npersonality traits: smart` })
-        request.reverse()
-        message.channel.sendTyping()
-        try {
-            let response = await client.chat.completions.create({
-                messages: request,
-                temperature: 1.0,
-                top_p: 1.0,
-                model: process.env.MODEL_NAME,
-                tools: toolDescriptions,
-                tool_choice: "auto"
-            })
-            if (response.choices[0].finish_reason == "tool_calls") {
-                const toolCall = response.choices[0].message.tool_calls[0]
-                guildCache[message.channelId].set(message.id, {
-                    role: "assistant",
-                    content: response.choices[0].message.content
-                })
-                const functionName = toolCall.function.name
-                const tool = tools[functionName]
-                const toolResponse = tool(JSON.parse(toolCall.function.arguments))
-                guildCache[message.channelId].set(toolCall.id, {
-                    tool_call_id: toolCall.id,
-                    role: "tool",
-                    content: toolResponse
-                })
-                response = await client.chat.completions.create({
-                    messages: await generateRequest(message.channelId, message.author.displayName),
-                    tools: toolDescriptions,
-                    temperature: 1.0,
-                    top_p: 1.0,
-                    model: process.env.MODEL_NAME
-                })
-                console.log("generated image with prompt " + toolCall.function.arguments + 
-                    " with response " + toolResponse)
-            }
-            let additionalData = `-# ${response.usage.total_tokens} tokens used`
-            if (message.attachments.size) {
-                additionalData += ", attachments were ignored"
-            }
-            const answer = response.choices[0].message.content + "\n" + additionalData
-            // console.log(request)
-            if (answer.length / 2000 >= 1) {
-                let messages = await linePage(answer)
-                if (!messages) {
-                    messages = await simplePage(answer)
-                }
-                let savedId = false
-                let reply: OmitPartialGroupDMChannel<Message<boolean>>
-                for (let pagedMessage of messages) {
-                    if (!savedId) {
-                        reply = await message.reply({ content: pagedMessage })
-                    } else {
-                        await message.reply(pagedMessage)
-                    }
-                }
-                guildCache[message.channelId].set(reply.id, { role: "assistant", 
-                    content: response.choices[0].message.content})
-                return
-            }
-            const reply = await message.reply(answer)
-            guildCache[message.channelId].set(reply.id, { role: "assistant", 
-                content: response.choices[0].message.content })
-        } catch (err) {
-            message.reply("message creation didn't finish successfully")
-            console.log(err)
-        }
+        generateAnswer(message)
     }
 })
 
 bot.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand()) {
         slashCommandHandler(interaction)
+    }
+    if (interaction.isMessageContextMenuCommand()) {
+        contextMenuHandler(interaction)
     }
     if (!interaction.isButton()) return
     if (!interaction.isRepliable()) return

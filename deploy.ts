@@ -1,6 +1,9 @@
-import { REST, Routes, type RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord.js"
+import { REST, Routes, type RESTPostAPIChatInputApplicationCommandsJSONBody, type RESTPostAPIContextMenuApplicationCommandsJSONBody } from "discord.js"
 import { commands } from "./slash.ts"
 import "dotenv/config"
+
+type InteractionRequestData = RESTPostAPIChatInputApplicationCommandsJSONBody
+| RESTPostAPIContextMenuApplicationCommandsJSONBody
 
 if (!process.env.TOKEN) {
     throw new Error("token is not set in .env")
@@ -8,7 +11,7 @@ if (!process.env.TOKEN) {
 
 const rest = new REST().setToken(process.env.TOKEN)
 
-const requestData: RESTPostAPIChatInputApplicationCommandsJSONBody[] = []
+const requestData: InteractionRequestData[] = []
 
 for (let command of commands) {
     requestData.push(command.data.toJSON())

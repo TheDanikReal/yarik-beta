@@ -1,5 +1,5 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js"
-import { type UserData, type SlashCommand, userData } from "./index.ts"
+import { Application, ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, SlashCommandBuilder, type APIApplicationCommandOptionChoice } from "discord.js"
+import { type UserData, type SlashCommand, userData, type Interaction, type ContextMenu } from "./index.ts"
 
 const setModel: SlashCommand = {
     data: new SlashCommandBuilder()
@@ -21,6 +21,14 @@ const setModel: SlashCommand = {
     }
 }
 
-const commands = [ setModel ] //: SlashCommand[] = [ setModel ]
+const generateAnswerAround: ContextMenu = {
+    data: new ContextMenuCommandBuilder()
+        .setName("generate response")
+        .setType(ApplicationCommandType.Message),
+    async execute (interaction: MessageContextMenuCommandInteraction) {
+    }
+}
 
-export { commands, setModel }
+const commands: Interaction[] = [ setModel, generateAnswerAround ] //: SlashCommand[] = [ setModel ]
+
+export { commands, setModel, generateAnswerAround }

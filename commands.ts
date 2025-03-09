@@ -1,8 +1,12 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ChatInputCommandInteraction, Message, type CacheType, type OmitPartialGroupDMChannel } from "discord.js"
-import { enabledChannels, userData, guildCache, cacheSize, bot, type OpenAICompatibleMessage } from "./index.ts"
+import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ChatInputCommandInteraction, Message, MessageContextMenuCommandInteraction, type CacheType, type OmitPartialGroupDMChannel } from "discord.js"
+import { enabledChannels, userData, guildCache, cacheSize, bot, type OpenAICompatibleMessage, generateAnswer } from "./index.ts"
 import { saveData } from "./button.ts"
-import { setModel } from "./slash.ts"
+import { generateAnswerAround, setModel } from "./slash.ts"
 import { LRUCache } from "lru-cache"
+
+export async function contextMenuHandler(interaction: MessageContextMenuCommandInteraction) {
+    generateAnswerAround.execute(interaction)
+}
 
 export function slashCommandHandler(interaction: ChatInputCommandInteraction) {
     switch (interaction.commandName) {
@@ -39,6 +43,12 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         })
         return true
     } else if (message.content.includes("activate")) {
+        const user = await message.guild.members.fetch({ user: message.author.id })
+        const manageMessages = user.permissions.has("ManageMessages")
+        if (!manageMessages) {
+            message.reply("user must have rights of managing messages")
+            return
+        }
         if (!enabledChannels.get(message.channelId)) {
             enabledChannels.set(message.channelId, true)
             message.reply("added channel")
@@ -70,6 +80,7 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         }
         message.reply("fetched messages")
     } else {
+        await generateAnswer(message)
         console.log(userData.get(message.author.id))
         console.log(message.content)
         return false

@@ -16,9 +16,9 @@ interface DiscordStatus {
 }
 
 async function fetchDiscordStatus() {
-    const response = await fetch("https://discordstatus.com/api/v2/status.json")
+    const response = await fetch(url)
     const status = await response.json() as DiscordStatus
-    discordStatus = status.status.indicator == "none"
+    discordStatus = status.status?.indicator == "none"
     return
 }
 
@@ -27,6 +27,7 @@ startBot()
 console.log("started")
 
 const port = process.env.PORT || 3000
+const url = process.env.STATUS_URL || "https://discordstatus.com/api/v2/status.json"
 let discordStatusRefreshed = Date.now()
 let discordStatus = false
 await fetchDiscordStatus()
