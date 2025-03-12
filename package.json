@@ -1,13 +1,16 @@
 {
   "type": "module",
   "dependencies": {
+    "@prisma/client": "^6.4.1",
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
     "lru-cache": "^11.0.2",
     "openai": "^4.85.4"
   },
   "devDependencies": {
+    "@prisma/extension-accelerate": "^1.2.2",
     "esbuild": "^0.25.0",
+    "prisma": "^6.4.1",
     "typescript": "^5.7.3"
   },
   "scripts": {

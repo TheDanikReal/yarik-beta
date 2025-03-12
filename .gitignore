@@ -131,5 +131,7 @@ dist
 
 *.js
 *.db
+prisma/migrations*
+prisma/*-journal
 .env.production
 test.ts
