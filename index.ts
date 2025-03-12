@@ -382,8 +382,15 @@ if (!process.env.TOKEN) {
 }
 
 const url = import.meta.url ? import.meta.url : "file:"
+let main = false
 
-if (process.argv[1] == fileURLToPath(url) || require.main) {
+try {
+    main = !!require.main
+} catch (err) {
+    main = process.argv[1] == fileURLToPath(url)
+}
+
+if (main) {
     try {
         bot.login(process.env.TOKEN)
         console.log("bot is active")
