@@ -30,7 +30,7 @@ const port = process.env.PORT || 3000
 const url = process.env.STATUS_URL || "https://discordstatus.com/api/v2/status.json"
 let discordStatusRefreshed = Date.now()
 let discordStatus = false
-await fetchDiscordStatus()
+fetchDiscordStatus()
 
 const server = http.createServer(async (req, res) => {
     if (discordStatusRefreshed <= Date.now() - 1000 * 60 * 30) {

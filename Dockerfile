@@ -4,7 +4,7 @@ FROM base AS deps
 WORKDIR /app
 COPY . /app/
 RUN npm ci
-RUN npx esbuild index.ts --bundle --outfile=bundle.cjs --platform=node
+RUN npx esbuild api.ts --bundle --outfile=bundle.cjs --platform=node --minify
 
 FROM base AS runner
 WORKDIR /app/

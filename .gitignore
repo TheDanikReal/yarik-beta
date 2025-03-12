@@ -135,3 +135,5 @@ prisma/migrations*
 prisma/*-journal
 .env.production
 test.ts
+bundle.cjs
+bundle.mjs
