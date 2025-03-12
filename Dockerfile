@@ -4,7 +4,8 @@ FROM base AS deps
 WORKDIR /app
 COPY . /app/
 RUN npm ci
-RUN npx esbuild api.ts --bundle --outfile=bundle.cjs --platform=node --minify
+RUN npx esbuild api.ts --bundle --outfile=bundle.cjs --platform=node
+RUN npx prisma generate --no-engine
 
 FROM base AS runner
 WORKDIR /app/
