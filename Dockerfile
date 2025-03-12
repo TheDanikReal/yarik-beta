@@ -4,7 +4,6 @@ FROM base AS deps
 WORKDIR /app
 COPY . /app/
 RUN npm ci
-RUN npx prisma migrate dev --name=init
 RUN npx esbuild index.ts --bundle --outfile=bundle.cjs --platform=node
 
 FROM base AS runner
