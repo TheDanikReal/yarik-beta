@@ -1,13 +1,20 @@
 import { Prisma, PrismaClient } from "@prisma/client"
+import { LRUCache } from "lru-cache"
 
 class PrismaDatabase {
     prisma: PrismaClient<Prisma.PrismaClientOptions>
-    cacheUsers: Map<string, Partial<Prisma.UserCreateInput>>
-    cacheChannels: Map<string, Partial<Prisma.ChannelCreateInput>>
+    cacheUsers: LRUCache<string, Partial<Prisma.UserCreateInput>>
+    cacheChannels: LRUCache<string, Partial<Prisma.ChannelCreateInput>>
     constructor() {
-        this.cacheUsers = new Map<string, Partial<Prisma.UserCreateInput>>()
-        this.cacheChannels = new Map<string, Partial<Prisma.ChannelCreateInput>>()
-        this.prisma = new PrismaClient()//.$extends(withAccelerate())
+        this.cacheUsers = new LRUCache<string, Partial<Prisma.UserCreateInput>>({
+            ttl: 1000 * 60 * 30,
+            max: 100
+        })
+        this.cacheChannels = new LRUCache<string, Partial<Prisma.ChannelCreateInput>>({
+            ttl: 1000 * 60 * 30,
+            max: 100
+        })
+        this.prisma = new PrismaClient()
         this.prisma.$connect()
     }
     async connect() {
@@ -123,14 +130,6 @@ class PrismaDatabase {
             })
         }
     }
-}
-
-class Caching {
-    users: Map<string, Prisma.UserCreateInput>
-    constructor() {
-        this.users = new Map<string, Prisma.UserCreateInput>()
-    }
-
 }
 
 export const database = new PrismaDatabase()

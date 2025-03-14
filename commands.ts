@@ -1,5 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ChatInputCommandInteraction, Message, MessageContextMenuCommandInteraction, type CacheType, type OmitPartialGroupDMChannel } from "discord.js"
-import { enabledChannels, userData, guildCache, cacheSize, bot, type OpenAICompatibleMessage, generateAnswer, modalFetchSize, fetchSize } from "./index.ts"
+import { enabledChannels, userData, guildCache, cacheSize, bot, type OpenAICompatibleMessage, generateAnswer, modalFetchSize, fetchSize, generateCache } from "./index.ts"
 import { saveData } from "./button.ts"
 import { generateAnswerAround, setModel } from "./slash.ts"
 import { LRUCache } from "lru-cache"
@@ -62,11 +62,16 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         }
         return true
     } else if (message.content.includes("fetch")) {
-        console.log(message.content.split(" "))
-        const userSize = Number(message.content.split(" ")[3]) | fetchSize
+        const cache = await generateCache(message.channelId)
+        let options = message.content.split(" ")
+        if (!options[2]) {
+           options[2] = bot.user.id
+        }
+        console.log(options)
+        const userSize = Number(options[3]) | fetchSize
         const channel = message.channel
         const messages = await channel.messages.fetch({ limit: Math.min(fetchSize, userSize) })
-        const target = message.content.split(" ")[2] || bot.user.id
+        const target = options[2]
         console.log("target: " + target)
         console.log("size: " + userSize)
         let request: Message[] = []
@@ -75,7 +80,7 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
             // guildCache[message.channelId].set()
         }
         for (let entry of request) {
-            guildCache[message.channelId].set(entry.id, {
+            cache.set(entry.id, {
                 role: target == entry.author.id ? "assistant" : "user",
                 content: entry.cleanContent + "\nauthor: " + entry.author.globalName
             })

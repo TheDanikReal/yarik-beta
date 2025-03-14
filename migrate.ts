@@ -6,15 +6,21 @@ import type { UserData } from "./index.ts"
 const servers: Map<string, boolean> = deserialize(await fs.readFile("servers.db"))
 const users: Map<string, UserData> = deserialize(await fs.readFile("users.db"))
 
+const alreadyExists = "{type} {id} already exists in database"
+
 for (let server of servers.entries()) {
     if (!database.findChannel(server[0])) {
         database.addChannel(server[0], server[1])
+    } else {
+        console.log(alreadyExists.replace("{type}", "server").replace("{id}", server[0]))
     }
 }
 
 for (let user of users.entries()) {
     if (!database.findUser(user[0])) {
         database.addUser(user[0], user[1].model)
+    } else {
+        console.log(alreadyExists.replace("{type}", "user").replace("{id}", user[0]))
     }
 }
 

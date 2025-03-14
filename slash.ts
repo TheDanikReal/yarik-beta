@@ -1,5 +1,5 @@
 import { Application, ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, SlashCommandBuilder, type APIApplicationCommandOptionChoice, type CacheType } from "discord.js"
-import { type UserData, type SlashCommand, userData, type Interaction, type ContextMenu, generateAnswer, generateCache, cacheSize, type OpenAICompatibleMessage, bot, system, generateResponse, getClient, errorMessage, linePage, simplePage, modalFetchSize } from "./index.ts"
+import { type UserData, type SlashCommand, userData, type Interaction, type ContextMenu, generateAnswer, generateCache, cacheSize, type OpenAICompatibleMessage, bot, system, generateResponse, getClient, errorMessage, linePage, simplePage, modalFetchSize, clearChannelCache } from "./index.ts"
 import { database } from "./base.ts"
 
 const setModel: SlashCommand = {
@@ -23,6 +23,20 @@ const setModel: SlashCommand = {
     }
 }
 
+const clearCache: SlashCommand = {
+    data: new SlashCommandBuilder()
+        .setName("clearcache")
+        .setDescription("clears cache for channel"),
+    async execute(interaction) {
+        switch (await clearChannelCache(interaction.channelId)) {
+            case true:
+                interaction.reply("removed cache")
+            case false:
+                interaction.reply("cache is already empty")
+        }
+    }
+}
+
 const generateAnswerAround: ContextMenu = {
     data: new ContextMenuCommandBuilder()
         .setName("generate response")
@@ -32,11 +46,12 @@ const generateAnswerAround: ContextMenu = {
         const cache = generateCache(interaction.channelId)
         const user = bot.user.id
         const target = interaction.targetId
-        interaction.channel.sendTyping()
+        const sendTyping = setInterval(() => interaction.channel.sendTyping(), 5000)
         interaction.reply("generating response")
         const messages = await interaction.channel.messages.fetch({ limit: modalFetchSize,
             before: target
         })
+        clearInterval(sendTyping)
         for (let message of messages) {
             request.push({
                 role: message[1].author.id == user ? "assistant" : "user",

@@ -125,6 +125,16 @@ export async function handleTools(message: OmitPartialGroupDMChannel<Message<boo
     })
 }
 
+export async function clearChannelCache(channelId: string): Promise<boolean> {
+    const cache = guildCache[channelId]
+    if (cache) {
+        cache.clear()
+        return true
+    } else {
+        return false
+    }
+}
+
 export async function simplePage(str: string): Promise<string[]> {
     let answers: string[] = []
     for (let i = 0; i < Math.ceil(str.length / 2000); i++) {
@@ -252,14 +262,11 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             if (!messages) {
                 messages = await simplePage(answer)
             }
-            let savedId = false
-            let reply: OmitPartialGroupDMChannel<Message<boolean>>
-            for (let pagedMessage of messages) {
-                if (!savedId) {
-                    reply = await message.reply({ content: pagedMessage })
-                } else {
-                    await message.reply(pagedMessage)
-                }
+            let reply: Message<boolean>
+            reply = await message.reply(messages[0])
+            for (let i = 1; i < messages.length; i++) {
+                const pagedMessage = messages[i]
+                await message.channel.send(pagedMessage)
             }
             cache.set(reply.id, { role: "assistant", 
                 content: response.choices[0].message.content})
@@ -305,7 +312,8 @@ export async function generateResponse(messages: OpenAICompatibleMessage[], user
 
 export async function getClient(user: string): Promise<[OpenAI, string]> {
     const userData = await database.findUser(user)
-    const model = userData?.model || process.env.MODEL_NAME
+    console.log(userData)
+    const model = userData?.model
     const userClient = models.get(model)
     if (userClient) {
         // console.log("model found: " + userClient.baseURL)
@@ -343,6 +351,22 @@ bot.on(Events.MessageCreate, async (message) => {
     const channel = await database.findChannel(message.channelId)
     if (channel?.enabled) { // enabledChannels.get(message.channelId)
         generateAnswer(message)
+    }
+})
+
+bot.on(Events.MessageDelete, async (message) => {
+    const cache = guildCache[message.channelId]
+    const entry = cache?.get(message.id)
+    if (entry) {
+        cache.delete(message.id)
+    }
+})
+
+bot.on(Events.MessageUpdate, async (message) => {
+    const cache = guildCache[message.channelId]
+    const entry = cache?.get(message.id)
+    if (entry) {
+        cache.set(message.id, { role: "user", content: message.content })
     }
 })
 
@@ -400,5 +424,3 @@ if (main) {
 }
 
 loadData()
-
-// console.log(require.main)
