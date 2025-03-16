@@ -49,13 +49,19 @@ export const system = `You are Yarik.\nYour job is to respond to last message fr
 export const errorMessage = "message creation didn't finish successfully"
 let modelsCount = 0
 
+let previousModel: OpenAI = openaiClient
+
 for (let i = 1; i < 10; i++) {
     const token = process.env["API_TOKEN" + i]
     const endpoint = process.env["API_ENDPOINT" + i]
     const model = process.env["MODEL_NAME" + i]
     if (token && endpoint && model) {
         // console.log(process.env["API_TOKEN" + i])
-        models.set(model, new OpenAI({ baseURL: endpoint, apiKey: token }))
+        const client = new OpenAI({ baseURL: endpoint, apiKey: token })
+        models.set(model, client)
+        previousModel = client
+    } else if (token) {
+        models.set(model, previousModel)
     } else {
         modelsCount = i
         console.log("found " + i + " api tokens")

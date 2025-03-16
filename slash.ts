@@ -7,6 +7,9 @@ const setModel: SlashCommand = {
         .setName("setmodel")
         .setDescription("Sets model of bot")
         .addStringOption(option => option.setName("model").addChoices(
+            { name: "opencoder", value: "open-r1/olympiccoder-32b:free" },
+            { name: "qwen", value: "qwen/qwq-32b:free" },
+            { name: "r1", value: "deepseek/deepseek-r1:free" },
             { name: "gpt", value: "gpt-4o" },
             { name: "gemini 2.0 pro", value: "gemini-2.0-pro-exp-02-05" }
         ).setDescription("changes used model user side")

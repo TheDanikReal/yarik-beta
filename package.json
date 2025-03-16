@@ -5,13 +5,13 @@
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
     "lru-cache": "^11.0.2",
-    "openai": "^4.85.4"
+    "openai": "^4.87.3"
   },
   "devDependencies": {
     "@prisma/extension-accelerate": "^1.2.2",
     "esbuild": "^0.25.0",
     "prisma": "^6.5.0",
-    "typescript": "^5.7.3"
+    "typescript": "^5.8.2"
   },
   "scripts": {
     "start": "tsc --build --verbose && node index.js",

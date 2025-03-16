@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgres"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -18,4 +18,22 @@ model User {
 model Channel {
   id      String     @id @unique
   enabled Boolean
+}
+
+model companies {
+  id        String     @id @unique
+  name      String
+  location  String
+  phone     String
+  plans     plan[]
+}
+
+model plan {
+  id        Int        @id @default(autoincrement())
+  companyId String
+  company   companies? @relation(fields: [companyId], references: [id])
+  date      DateTime
+  item      Int?
+  value     Int?
+  amount    BigInt?
 }
