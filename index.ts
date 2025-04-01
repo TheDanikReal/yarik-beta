@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, ButtonBuilder, ActionRowBuilder, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, ChatInputCommandInteraction, type OmitPartialGroupDMChannel, Message, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, messageLink, type Channel, type GuildTextBasedChannel } from "discord.js"
+import { Client, Events, GatewayIntentBits, ButtonBuilder, ActionRowBuilder, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, ChatInputCommandInteraction, type OmitPartialGroupDMChannel, Message, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, messageLink, type Channel, type GuildTextBasedChannel, type Snowflake } from "discord.js"
 import { buttonCommandHandler, commmandHandler, contextMenuHandler, slashCommandHandler } from "./commands.ts"
 import type { ChatCompletionMessageParam } from "openai/resources/index.mjs"
 import { tools, toolDescriptions, type Tools } from "./tools.ts"
@@ -6,6 +6,7 @@ import { promises as fs } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { deserialize } from "node:v8"
 import { LRUCache } from "lru-cache"
+import { pino } from "pino"
 import OpenAI from "openai"
 import "dotenv/config"
 import { database } from "./base.ts"
@@ -39,6 +40,7 @@ if (!process.env.API_ENDPOINT || !process.env.API_TOKEN || !process.env.TOKEN) {
     process.exit(1)
 }
 
+export const logger = pino()
 export const bot = new Client({ intents: [GatewayIntentBits.Guilds, "MessageContent", "GuildMessages", "DirectMessages"]})
 const openaiClient = new OpenAI({ apiKey: process.env.API_TOKEN, baseURL: process.env.API_ENDPOINT })
 const models = new Map<string, OpenAI>()
@@ -56,12 +58,13 @@ for (let i = 1; i < 10; i++) {
     const endpoint = process.env["API_ENDPOINT" + i]
     const model = process.env["MODEL_NAME" + i]
     if (token && endpoint && model) {
-        // console.log(process.env["API_TOKEN" + i])
+        console.log("found " + model)
         const client = new OpenAI({ baseURL: endpoint, apiKey: token })
         models.set(model, client)
         previousModel = client
-    } else if (token) {
+    } else if (model) {
         models.set(model, previousModel)
+        console.log("found model " + model + " from cache")
     } else {
         modelsCount = i
         console.log("found " + i + " api tokens")
@@ -91,16 +94,23 @@ export async function fetchMessages(size: number, channel: GuildTextBasedChannel
     const messages = await channel.messages.fetch({ limit: Math.min(fetchSize, size) })
         console.log("target: " + target)
         console.log("size: " + size)
-        let request: Message[] = []
+        let request: [OpenAICompatibleMessage, Snowflake][] = []
+        let previousMessage = ""
+        let previousAuthor = ""
         for (let entry of messages.entries()) {
-            request.push(entry[1])
+            if (entry[1].author.id == previousAuthor) {
+                previousMessage = entry[1].cleanContent
+            } else {
+                previousAuthor = entry[1].author.id
+            }
+            request.push([{
+                role: target == entry[1].author.id ? "assistant" : "user",
+                content: entry[1].cleanContent
+            }, entry[1].id])
             // guildCache[message.channelId].set()
         }
         for (let entry of request) {
-            guildCache[channel.id].set(entry.id, {
-                role: target == entry.author.id ? "assistant" : "user",
-                content: entry.cleanContent + "\nauthor: " + entry.author.globalName
-            })
+            guildCache[channel.id].set(entry[1], entry[0])
         }
 }
 
@@ -159,8 +169,8 @@ export async function linePage(str: string): Promise<string[] | false> {
         i++
         if (Math.floor((line.length + length) / 2000) != 0) {
             messages.push(answer)
-            answer = ""
-            length = 0
+            answer = line
+            length = line.length + 1
         } else if (i == lines) {
             messages.push(answer + line)
         } else {
@@ -170,25 +180,6 @@ export async function linePage(str: string): Promise<string[] | false> {
             }
         }
     }
-    /*
-    for (let line of str.split("\n")) {
-        console.log(line)
-        if (Math.floor((line.length + length) / 2000) != 0) {
-            messages.push(answer)
-            answer = ""
-            length = 0
-        } else {
-            if (line.length < 2000) {
-                console.log("line length: " + line.length + ", answer: " + answer + "length: "
-                    + length
-                )
-                answer += line + "\n"
-                length += line.length + 1
-            } else {
-                return false
-            }
-        }
-    }*/
     return messages
 }
 
@@ -201,6 +192,11 @@ export async function getModels(): Promise<string[]> {
     }
     console.log(result)
     return result
+}
+
+export async function getModelInfo(model: string) {
+    const client = openaiClient
+    return await client.models.retrieve(model)
 }
 
 export async function startBot(): Promise<boolean> {
@@ -226,22 +222,24 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
     const cache = await generateCache(message.channelId)
     const preferences = await getClient(message.author.id)
     const client = preferences[0]
+    const model = preferences[1]
     let content = message.content
     let referenceInfo = ""
+
     if (message.reference) {
         const reference = await message.fetchReference()
         referenceInfo = reference.content
         content += `\nreplying to message by ${reference.author}: ${referenceInfo}`
     }
+
     cache.set(message.id, { role: "user", 
         content: message.content + "\nauthor: " + message.author.displayName })
-    // const request = await generateRequest(message.channelId, message.author.displayName)
+
     const request: OpenAICompatibleMessage[] = []
     for (let entry of cache.entries()) {
         request.push(entry[1])
-        // console.log(entry[0] + ": " + entry[1].content)
     }
-    // request.push({ role: "system", content: "send human-like messages" })
+
     request.push({ role: "system", content: system.replace("{author}", message.author.displayName) })
     request.reverse()
     message.channel.sendTyping()
@@ -250,13 +248,13 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             messages: request,
             temperature: 1.0,
             top_p: 1.0,
-            model: process.env.MODEL_NAME,
-            tools: toolDescriptions,
-            tool_choice: "auto"
+            model: model,
+            //tools: toolDescriptions,
+            //tool_choice: "auto"
         })
-        if (response.choices[0].finish_reason == "tool_calls") {
+        /*if (response.choices[0].finish_reason == "tool_calls") {
             response = await handleTools(message, client, response.choices[0])
-        }
+        }*/
         let additionalData = `-# ${response.usage.total_tokens} tokens used`
         if (message.attachments.size) {
             additionalData += ", attachments were ignored"
@@ -316,16 +314,20 @@ export async function generateResponse(messages: OpenAICompatibleMessage[], user
     }
 }
 
+export async function generateAdditionalInfo(message: Message) {
+    return message.cleanContent + "\nauthor: " + message.author.globalName
+}
+
 export async function getClient(user: string): Promise<[OpenAI, string]> {
     const userData = await database.findUser(user)
     console.log(userData)
     const model = userData?.model
     const userClient = models.get(model)
     if (userClient) {
-        // console.log("model found: " + userClient.baseURL)
+        console.log("model found: " + model)
         return [userClient, model]
     } else {
-        // console.log("model for " + user + " not found")
+        console.log("model for " + user + " not found")
         return [openaiClient, process.env.MODEL_NAME]
     }
 }
@@ -336,14 +338,10 @@ async function generateRequest(channelId: string, author: string): Promise<OpenA
         request.push(entry[1])
         console.log(entry[0] + ": " + entry[1].content)
     }
-    // request.push({ role: "system", content: "send human-like messages" })
     request.push({ role: "system", content: system.replace("{user}", author) })
     request.reverse()
     return request
 }
-
-// const allowedMap = new Map()
-
 
 bot.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) {
@@ -355,7 +353,7 @@ bot.on(Events.MessageCreate, async (message) => {
         }
     }
     const channel = await database.findChannel(message.channelId)
-    if (channel?.enabled) { // enabledChannels.get(message.channelId)
+    if (channel?.enabled) {
         generateAnswer(message)
     }
 })
@@ -395,9 +393,11 @@ bot.on(Events.InteractionCreate, async (interaction) => {
 //    console.log(message)
 //})
 
-bot.on("ready", (ready) => {
+bot.on("ready", async (ready) => {
     console.log(ready.user.displayName + " ready")
     console.log("logged in as " + ready.user.id)
+    console.log(process.env.MODEL_NAME)
+    // console.log(await getModelInfo(process.env.MODEL_NAME))
 })
 
 process.on("SIGINT", async (signal) => {

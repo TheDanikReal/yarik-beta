@@ -5,11 +5,13 @@
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
     "lru-cache": "^11.0.2",
-    "openai": "^4.87.3"
+    "openai": "^4.87.3",
+    "pino": "^9.6.0"
   },
   "devDependencies": {
     "@prisma/extension-accelerate": "^1.2.2",
     "esbuild": "^0.25.0",
+    "pino-pretty": "^13.0.0",
     "prisma": "^6.5.0",
     "typescript": "^5.8.2"
   },
