@@ -276,20 +276,26 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             //tools: toolDescriptions,
             //tool_choice: "auto"
         })
+        let i = 1
         let response = ""
         let finishReason = ""
         let usage: CompletionUsage
         for await (const part of stream) {
             let chunk = part.choices[0]?.delta?.content || ""
-            process.stdout.write(chunk)
+            logger.trace(chunk)
             response += chunk
             if (response.length > 1000) {
                 let paged = await linePage(response)
                 if (!paged) return
                 for (let chunk of paged) {
-                    message.reply(chunk)
+                    if (i == 1) {
+                        message.reply(chunk)
+                    } else {
+                        message.channel.send(chunk)
+                    }
                 }
                 response = ""
+                i++
             }
             if (part.usage) {
                 usage = part.usage
@@ -362,7 +368,6 @@ export async function generateAdditionalInfo(message: Message) {
 
 export async function getClient(user: string): Promise<[OpenAI, string]> {
     const userData = await database.findUser(user)
-    console.log(userData)
     const model = userData?.model
     const userClient = models.get(model)
     if (userClient) {
