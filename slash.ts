@@ -1,5 +1,5 @@
 import { Application, ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, SlashCommandBuilder, type APIApplicationCommandOptionChoice, type CacheType } from "discord.js"
-import { type UserData, type SlashCommand, userData, type Interaction, type ContextMenu, generateAnswer, generateCache, cacheSize, type OpenAICompatibleMessage, bot, system, generateResponse, getClient, errorMessage, linePage, simplePage, modalFetchSize, clearChannelCache } from "./index.ts"
+import { type UserData, type SlashCommand, userData, type Interaction, type ContextMenu, generateAnswer, generateCache, cacheSize, type OpenAICompatibleMessage, bot, system, generateResponse, getClient, errorMessage, linePage, simplePage, modalFetchSize, clearChannelCache, logger } from "./index.ts"
 import { database } from "./base.ts"
 
 const setModel: SlashCommand = {
@@ -20,9 +20,8 @@ const setModel: SlashCommand = {
         userData.set(interaction.user.id, {
             model: model
         })
-        console.log(model)
+        logger.trace("changing model for " + interaction.user.id + " to " + model)
         const reply = await interaction.reply("changed model to " + model)
-        console.log(reply.id)
     }
 }
 
@@ -87,6 +86,6 @@ const generateAnswerAround: ContextMenu = {
     }
 }
 
-const commands: Interaction[] = [ setModel, generateAnswerAround ] //: SlashCommand[] = [ setModel ]
+const commands: Interaction[] = [ setModel, clearCache, generateAnswerAround ] //: SlashCommand[] = [ setModel ]
 
-export { commands, setModel, generateAnswerAround }
+export { commands, setModel, clearCache, generateAnswerAround }

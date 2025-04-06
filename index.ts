@@ -1,6 +1,6 @@
 import { Client, Events, GatewayIntentBits, ButtonBuilder, ActionRowBuilder, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, ChatInputCommandInteraction, type OmitPartialGroupDMChannel, Message, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, messageLink, type Channel, type GuildTextBasedChannel, type Snowflake } from "discord.js"
 import { buttonCommandHandler, commmandHandler, contextMenuHandler, slashCommandHandler } from "./commands.ts"
-import type { ChatCompletionMessageParam } from "openai/resources/index.mjs"
+import type { ChatCompletionMessageParam, CompletionUsage } from "openai/resources/index.mjs"
 import { tools, toolDescriptions, type Tools } from "./tools.ts"
 import { promises as fs } from "node:fs"
 import { fileURLToPath } from "node:url"
@@ -40,7 +40,9 @@ if (!process.env.API_ENDPOINT || !process.env.API_TOKEN || !process.env.TOKEN) {
     process.exit(1)
 }
 
-export const logger = pino()
+export const logger = pino({
+    level: process.env.LOG_LEVEL || "info",
+})
 export const bot = new Client({ intents: [GatewayIntentBits.Guilds, "MessageContent", "GuildMessages", "DirectMessages"]})
 const openaiClient = new OpenAI({ apiKey: process.env.API_TOKEN, baseURL: process.env.API_ENDPOINT })
 const models = new Map<string, OpenAI>()
@@ -58,16 +60,16 @@ for (let i = 1; i < 10; i++) {
     const endpoint = process.env["API_ENDPOINT" + i]
     const model = process.env["MODEL_NAME" + i]
     if (token && endpoint && model) {
-        console.log("found " + model)
+        logger.info("found " + model)
         const client = new OpenAI({ baseURL: endpoint, apiKey: token })
         models.set(model, client)
         previousModel = client
     } else if (model) {
         models.set(model, previousModel)
-        console.log("found model " + model + " from cache")
+        logger.info("found model " + model + " from cache")
     } else {
         modelsCount = i
-        console.log("found " + i + " api tokens")
+        logger.info("found " + i + " api tokens")
         break
     }
 }
@@ -153,10 +155,12 @@ export async function clearChannelCache(channelId: string): Promise<boolean> {
 
 export async function simplePage(str: string): Promise<string[]> {
     let answers: string[] = []
+    console.log(Math.ceil(str.length / 2000))
     for (let i = 0; i < Math.ceil(str.length / 2000); i++) {
         answers.push(str.slice(i * 2000, (i + 1) * 2000))
     }
-    return answers
+    console.log(answers.length)
+    return await fixMarkup(answers)
 }
 
 export async function linePage(str: string): Promise<string[] | false> {
@@ -170,17 +174,35 @@ export async function linePage(str: string): Promise<string[] | false> {
         if (Math.floor((line.length + length) / 2000) != 0) {
             messages.push(answer)
             answer = line
-            length = line.length + 1
+            length = line.length + 3
         } else if (i == lines) {
             messages.push(answer + line)
         } else {
             if (line.length < 2000) {
                 answer += line + "\n"
-                length += line.length + 1
+                length += line.length + 3
             }
         }
     }
-    return messages
+    return messages // await fixMarkup(messages)
+}
+
+export async function fixMarkup(messages: string[]): Promise<string[]> {
+    let result: string[] = []
+    let active = false
+    for (let i = 0; i < messages.length; i++) {
+        let editedMessage = messages[i]
+        if (active) {
+            active = false
+            editedMessage = "```" + editedMessage
+        }
+        if (editedMessage.split("```").length % 2 != 0) {
+            active = true
+        }
+        result.push(editedMessage)
+    }
+    console.log(result.length)
+    return result
 }
 
 export async function getModels(): Promise<string[]> {
@@ -244,7 +266,9 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
     request.reverse()
     message.channel.sendTyping()
     try {
-        let response = await client.chat.completions.create({
+        let stream = await client.chat.completions.create({
+            stream: true,
+            stream_options: { include_usage: true },
             messages: request,
             temperature: 1.0,
             top_p: 1.0,
@@ -252,15 +276,34 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             //tools: toolDescriptions,
             //tool_choice: "auto"
         })
+        let response = ""
+        let finishReason = ""
+        let usage: CompletionUsage
+        for await (const part of stream) {
+            let chunk = part.choices[0]?.delta?.content || ""
+            process.stdout.write(chunk)
+            response += chunk
+            if (response.length > 1000) {
+                let paged = await linePage(response)
+                if (!paged) return
+                for (let chunk of paged) {
+                    message.reply(chunk)
+                }
+                response = ""
+            }
+            if (part.usage) {
+                usage = part.usage
+                finishReason = part.choices[0].finish_reason
+            }
+        }
         /*if (response.choices[0].finish_reason == "tool_calls") {
             response = await handleTools(message, client, response.choices[0])
         }*/
-        let additionalData = `-# ${response.usage.total_tokens} tokens used`
+        let additionalData = `-# ${usage.total_tokens} tokens used with ${finishReason} end reason`
         if (message.attachments.size) {
             additionalData += ", attachments were ignored"
         }
-        const answer = response.choices[0].message.content + "\n" + additionalData
-        // console.log(request)
+        const answer = response + "\n" + additionalData
         if (answer.length / 2000 >= 1) {
             let messages = await linePage(answer)
             if (!messages) {
@@ -273,15 +316,15 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
                 await message.channel.send(pagedMessage)
             }
             cache.set(reply.id, { role: "assistant", 
-                content: response.choices[0].message.content})
+                content: response })
             return
         }
         const reply = await message.reply(answer)
         cache.set(reply.id, { role: "assistant", 
-            content: response.choices[0].message.content })
+            content: response })
     } catch (err) {
         message.reply(errorMessage)
-        console.log(err)
+        logger.error(err)
     }
     return
 }
@@ -294,14 +337,13 @@ export async function generateResponse(messages: OpenAICompatibleMessage[], user
     if (!userClient && !userModel) {
         client = openaiClient
         model = process.env.MODEL_NAME
-        console.log("user settings are not defined")
+        logger.debug("user settings are not defined")
     } else {
         client = userClient
         model = userModel
-        console.log("settings are defined")
+        logger.debug("settings are defined")
     }
-    console.log(client.baseURL, " ", model)
-    console.log(process.env.MODEL_NAME)
+    logger.trace("using " + model + " model")
     try {
         return client.chat.completions.create({
             messages: messages,
@@ -324,10 +366,10 @@ export async function getClient(user: string): Promise<[OpenAI, string]> {
     const model = userData?.model
     const userClient = models.get(model)
     if (userClient) {
-        console.log("model found: " + model)
+        logger.trace("model for " + user + "found: " + model)
         return [userClient, model]
     } else {
-        console.log("model for " + user + " not found")
+        logger.trace("model for " + user + " not found")
         return [openaiClient, process.env.MODEL_NAME]
     }
 }
@@ -336,7 +378,7 @@ async function generateRequest(channelId: string, author: string): Promise<OpenA
     const request: OpenAICompatibleMessage[] = []
     for (let entry of guildCache[channelId].entries()) {
         request.push(entry[1])
-        console.log(entry[0] + ": " + entry[1].content)
+        logger.trace(entry[0] + ": " + entry[1].content)
     }
     request.push({ role: "system", content: system.replace("{user}", author) })
     request.reverse()
@@ -375,12 +417,11 @@ bot.on(Events.MessageUpdate, async (message) => {
 })
 
 bot.on(Events.InteractionCreate, async (interaction) => {
-    console.log("got interaction")
+    logger.trace("got interaction")
     if (interaction.isChatInputCommand()) {
         slashCommandHandler(interaction)
     }
     if (interaction.isMessageContextMenuCommand()) {
-        console.log(1)
         contextMenuHandler(interaction)
     }
     if (!interaction.isButton()) return
@@ -394,9 +435,9 @@ bot.on(Events.InteractionCreate, async (interaction) => {
 //})
 
 bot.on("ready", async (ready) => {
-    console.log(ready.user.displayName + " ready")
-    console.log("logged in as " + ready.user.id)
-    console.log(process.env.MODEL_NAME)
+    logger.info(ready.user.displayName + " ready")
+    logger.info("logged in as " + ready.user.id)
+    logger.info("using " + process.env.MODEL_NAME + " model")
     // console.log(await getModelInfo(process.env.MODEL_NAME))
 })
 
@@ -407,7 +448,7 @@ process.on("SIGINT", async (signal) => {
 })
 
 if (!process.env.TOKEN) {
-    console.log("bot token is not set")
+    logger.error("bot token is not set")
     process.exit(1)
 }
 
@@ -423,9 +464,9 @@ try {
 if (main) {
     try {
         bot.login(process.env.TOKEN)
-        console.log("bot is active")
+        logger.info("bot is active")
     } catch (err) {
-        console.log(err)
+        logger.error(err)
     }
 }
 
