@@ -1,6 +1,7 @@
 import { Application, ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, SlashCommandBuilder, type APIApplicationCommandOptionChoice, type CacheType } from "discord.js"
-import { type UserData, type SlashCommand, userData, type Interaction, type ContextMenu, generateAnswer, generateCache, cacheSize, type OpenAICompatibleMessage, bot, system, generateResponse, getClient, errorMessage, linePage, simplePage, modalFetchSize, clearChannelCache, logger } from "./index.ts"
+import { type UserData, type SlashCommand, userData, type Interaction, type ContextMenu, generateAnswer, generateCache, cacheSize, type OpenAICompatibleMessage, bot, generateResponse, getClient, linePage, simplePage, modalFetchSize, clearChannelCache, logger } from "./index.ts"
 import { database } from "./base.ts"
+import { settings } from "./settings.ts"
 
 const setModel: SlashCommand = {
     data: new SlashCommandBuilder()
@@ -11,7 +12,7 @@ const setModel: SlashCommand = {
             { name: "qwen", value: "qwen/qwq-32b:free" },
             { name: "r1", value: "deepseek/deepseek-r1:free" },
             { name: "gpt", value: "gpt-4o" },
-            { name: "gemini 2.0 pro", value: "gemini-2.0-pro-exp-02-05" }
+            { name: "gemini 2.0 pro", value: "gemini-2.5-pro-exp-03-25" }
         ).setDescription("changes used model user side")
         .setRequired(true)),
     async execute(interaction: ChatInputCommandInteraction) { 
@@ -62,13 +63,13 @@ const generateAnswerAround: ContextMenu = {
         }
         request.push({
             role: "system",
-            content: system.replace("{author}", interaction.user.globalName)
+            content: settings.system.replace("{author}", interaction.user.globalName)
         })
         request.reverse()
         const client = await getClient(interaction.user.id)
         const response = await generateResponse(request, client[0], client[1])
         if (!response) {
-            interaction.reply(errorMessage)
+            interaction.reply(settings.error)
             return
         }
         let answer = await linePage(response.choices[0].message.content)
@@ -77,7 +78,8 @@ const generateAnswerAround: ContextMenu = {
         }
         interaction.editReply(answer[0] + "\n-# " + 
             response.usage.total_tokens + " tokens used")
-        console.log(response.choices[0].message.content)
+        logger.trace("generated response for " + interaction.user.id + ": "
+            + response.choices[0].message.content)
         if (answer.length > 1) {
             for (let message of answer) {
                 interaction.channel.send(message)
@@ -86,6 +88,6 @@ const generateAnswerAround: ContextMenu = {
     }
 }
 
-const commands: Interaction[] = [ setModel, clearCache, generateAnswerAround ] //: SlashCommand[] = [ setModel ]
+const commands: Interaction[] = [ setModel, clearCache, generateAnswerAround ]
 
 export { commands, setModel, clearCache, generateAnswerAround }

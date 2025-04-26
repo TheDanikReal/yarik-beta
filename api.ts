@@ -1,5 +1,5 @@
 import * as http from "node:http"
-import { startBot, bot } from "./index.ts"
+import { startBot, bot, logger } from "./index.ts"
 
 interface DiscordStatus {
     page: {
@@ -24,7 +24,7 @@ async function fetchDiscordStatus() {
 
 startBot()
 
-console.log("started")
+logger.info("started")
 
 const port = process.env.PORT || 3000
 const url = process.env.STATUS_URL || "https://discordstatus.com/api/v2/status.json"
@@ -45,5 +45,5 @@ const server = http.createServer(async (req, res) => {
 })
 
 server.listen(port, () => {
-    console.log("server is running on port ", port, " ")
+    logger.info("server is running on port ", port, " ")
 })

@@ -1,15 +1,14 @@
-import { Client, Events, GatewayIntentBits, ButtonBuilder, ActionRowBuilder, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, ChatInputCommandInteraction, type OmitPartialGroupDMChannel, Message, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, messageLink, type Channel, type GuildTextBasedChannel, type Snowflake } from "discord.js"
+import { Client, Events, GatewayIntentBits, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, ChatInputCommandInteraction, type OmitPartialGroupDMChannel, Message, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, type GuildTextBasedChannel, type Snowflake } from "discord.js"
 import { buttonCommandHandler, commmandHandler, contextMenuHandler, slashCommandHandler } from "./commands.ts"
 import type { ChatCompletionMessageParam, CompletionUsage } from "openai/resources/index.mjs"
 import { tools, toolDescriptions, type Tools } from "./tools.ts"
-import { promises as fs } from "node:fs"
 import { fileURLToPath } from "node:url"
-import { deserialize } from "node:v8"
 import { LRUCache } from "lru-cache"
 import { pino } from "pino"
 import OpenAI from "openai"
 import "dotenv/config"
 import { database } from "./base.ts"
+import { settings } from "./settings.ts"
 
 export interface SlashCommand {
     data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder,
@@ -44,13 +43,13 @@ export const logger = pino({
     level: process.env.LOG_LEVEL || "info",
 })
 export const bot = new Client({ intents: [GatewayIntentBits.Guilds, "MessageContent", "GuildMessages", "DirectMessages"]})
-const openaiClient = new OpenAI({ apiKey: process.env.API_TOKEN, baseURL: process.env.API_ENDPOINT })
+const openaiClient = new OpenAI({ apiKey: process.env.API_TOKEN,
+    baseURL: process.env.API_ENDPOINT,
+    defaultHeaders: settings.headers })
 const models = new Map<string, OpenAI>()
 export const cacheSize = Number(process.env.CACHE_SIZE) || 10
 export const modalFetchSize = 10
 export const fetchSize = Math.min(cacheSize, 100)
-export const system = `You are Yarik.\nYour job is to respond to last message from {author}. DO NOT output an empty message. ALWAYS reply. NO EMPTY MESSAGE. you can message many times in a row. just continue the conversation. do not reply with empty message.\nabout Yarik: A friend who helps with problems. I have a YouTube channel with 1 thousand subscribers.\npersonality traits: smart`
-export const errorMessage = "message creation didn't finish successfully"
 let modelsCount = 0
 
 let previousModel: OpenAI = openaiClient
@@ -61,7 +60,7 @@ for (let i = 1; i < 10; i++) {
     const model = process.env["MODEL_NAME" + i]
     if (token && endpoint && model) {
         logger.info("found " + model)
-        const client = new OpenAI({ baseURL: endpoint, apiKey: token })
+        const client = new OpenAI({ baseURL: endpoint, apiKey: token, defaultHeaders: settings.headers })
         models.set(model, client)
         previousModel = client
     } else if (model) {
@@ -78,24 +77,12 @@ models.set(process.env["MODEL_NAME"], openaiClient)
 
 export let guildCache: GuildCache = {}
 export let slashCommands = new Map<string, SlashCommand>()
-export let enabledChannels = new Map<string, boolean>()
 export let userData = new Map<string, UserData>()
-
-async function loadData() {
-    try {
-        const servers: Map<string, boolean> = deserialize(await fs.readFile("servers.db"))
-        enabledChannels = servers
-        const data: Map<string, UserData> = deserialize(await fs.readFile("users.db"))
-        userData = data
-    } catch (err) {
-        console.log("servers database is not found")
-    }
-}
 
 export async function fetchMessages(size: number, channel: GuildTextBasedChannel, target: string) {
     const messages = await channel.messages.fetch({ limit: Math.min(fetchSize, size) })
-        console.log("target: " + target)
-        console.log("size: " + size)
+        logger.debug("target: " + target)
+        logger.debug("size: " + size)
         let request: [OpenAICompatibleMessage, Snowflake][] = []
         let previousMessage = ""
         let previousAuthor = ""
@@ -235,7 +222,7 @@ export async function generateCache(channelId: string) {
         guildCache[channelId] = new LRUCache({
             max: cacheSize
         })
-        console.log("created new cache map")
+        logger.info("created new cache map for " + channelId)
     }
     return guildCache[channelId]
 }
@@ -262,9 +249,11 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
         request.push(entry[1])
     }
 
-    request.push({ role: "system", content: system.replace("{author}", message.author.displayName) })
+    request.push({ role: "system",
+        content: settings.system.replace("{author}", message.author.displayName) })
     request.reverse()
     message.channel.sendTyping()
+    const sendTyping = setInterval(() => message.channel.sendTyping(), 5000)
     try {
         let stream = await client.chat.completions.create({
             stream: true,
@@ -278,12 +267,14 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
         })
         let i = 1
         let response = ""
+        let fullResponse = ""
         let finishReason = ""
         let usage: CompletionUsage
         for await (const part of stream) {
             let chunk = part.choices[0]?.delta?.content || ""
             logger.trace(chunk)
             response += chunk
+            fullResponse += chunk
             if (response.length > 1000) {
                 let paged = await linePage(response)
                 if (!paged) return
@@ -299,6 +290,8 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             }
             if (part.usage) {
                 usage = part.usage
+            }
+            if (part.choices[0].finish_reason) {
                 finishReason = part.choices[0].finish_reason
             }
         }
@@ -310,28 +303,31 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             additionalData += ", attachments were ignored"
         }
         const answer = response + "\n" + additionalData
+        let reply: Message<boolean>
         if (answer.length / 2000 >= 1) {
             let messages = await linePage(answer)
             if (!messages) {
                 messages = await simplePage(answer)
             }
-            let reply: Message<boolean>
-            reply = await message.reply(messages[0])
+            reply = await message.channel.send(messages[0])
             for (let i = 1; i < messages.length; i++) {
                 const pagedMessage = messages[i]
                 await message.channel.send(pagedMessage)
             }
             cache.set(reply.id, { role: "assistant", 
-                content: response })
+                content: fullResponse })
             return
         }
-        const reply = await message.reply(answer)
+        if (i == 1) {
+            reply = await message.channel.send(answer)
+        }
         cache.set(reply.id, { role: "assistant", 
-            content: response })
+            content: fullResponse })
     } catch (err) {
-        message.reply(errorMessage)
+        message.reply(settings.error)
         logger.error(err)
     }
+    clearInterval(sendTyping)
     return
 }
 
@@ -385,7 +381,7 @@ async function generateRequest(channelId: string, author: string): Promise<OpenA
         request.push(entry[1])
         logger.trace(entry[0] + ": " + entry[1].content)
     }
-    request.push({ role: "system", content: system.replace("{user}", author) })
+    request.push({ role: "system", content: settings.system.replace("{user}", author) })
     request.reverse()
     return request
 }
@@ -443,7 +439,6 @@ bot.on("ready", async (ready) => {
     logger.info(ready.user.displayName + " ready")
     logger.info("logged in as " + ready.user.id)
     logger.info("using " + process.env.MODEL_NAME + " model")
-    // console.log(await getModelInfo(process.env.MODEL_NAME))
 })
 
 process.on("SIGINT", async (signal) => {
@@ -474,5 +469,3 @@ if (main) {
         logger.error(err)
     }
 }
-
-loadData()

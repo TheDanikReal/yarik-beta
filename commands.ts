@@ -1,5 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ChatInputCommandInteraction, Message, MessageContextMenuCommandInteraction, type CacheType, type OmitPartialGroupDMChannel } from "discord.js"
-import { enabledChannels, userData, bot, generateAnswer, fetchSize, generateCache, logger, } from "./index.ts"
+import { bot, generateAnswer, fetchSize, generateCache, logger, userData, } from "./index.ts"
 import { saveData } from "./button.ts"
 import { clearCache, generateAnswerAround, setModel } from "./slash.ts"
 import { database } from "./base.ts"
@@ -53,7 +53,7 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
             return
         }
         const channel = await database.findChannel(message.channelId)
-        if (!enabledChannels.get(message.channelId) || !channel?.enabled) {
+        if (!channel?.enabled) {
             database.editChannelIfExists(message.channelId, true)
             message.reply("added channel")
         } else {
