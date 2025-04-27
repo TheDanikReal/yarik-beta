@@ -303,13 +303,12 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             additionalData += ", attachments were ignored"
         }
         const answer = response + "\n" + additionalData
-        let reply: Message<boolean>
         if (answer.length / 2000 >= 1) {
             let messages = await linePage(answer)
             if (!messages) {
                 messages = await simplePage(answer)
             }
-            reply = await message.channel.send(messages[0])
+            let reply = await message.channel.send(messages[0])
             for (let i = 1; i < messages.length; i++) {
                 const pagedMessage = messages[i]
                 await message.channel.send(pagedMessage)
@@ -318,7 +317,10 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
                 content: fullResponse })
             return
         }
+        let reply: Message<boolean>
         if (i == 1) {
+            reply = await message.reply(answer)
+        } else {
             reply = await message.channel.send(answer)
         }
         cache.set(reply.id, { role: "assistant", 
