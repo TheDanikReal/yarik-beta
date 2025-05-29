@@ -88,6 +88,10 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         }
         message.reply("fetched messages")
         return true
+    ////} else if (message.content.includes("clear")) {
+    //    database.cacheUsers.clear()
+    //    database.cacheChannels.clear()
+    //    message.reply("cleared cache")
     } else {
         await generateAnswer(message)
         logger.trace("generating answer for " + userData.get(message.author.id))

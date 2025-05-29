@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, ChatInputCommandInteraction, type OmitPartialGroupDMChannel, Message, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, type GuildTextBasedChannel, type Snowflake } from "discord.js"
+import { Client, Events, GatewayIntentBits, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, ChatInputCommandInteraction, type OmitPartialGroupDMChannel, Message, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, type GuildTextBasedChannel, type Snowflake, codeBlock } from "discord.js"
 import { buttonCommandHandler, commmandHandler, contextMenuHandler, slashCommandHandler } from "./commands.ts"
 import type { ChatCompletionMessageParam, CompletionUsage } from "openai/resources/index.mjs"
 import { tools, toolDescriptions, type Tools } from "./tools.ts"
@@ -269,6 +269,7 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
         let response = ""
         let fullResponse = ""
         let finishReason = ""
+        let inCodeBlock = false
         let usage: CompletionUsage
         for await (const part of stream) {
             let chunk = part.choices[0]?.delta?.content || ""
@@ -276,14 +277,20 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             response += chunk
             fullResponse += chunk
             if (response.length > 1000) {
-                let paged = await linePage(response)
-                if (!paged) return
-                for (let chunk of paged) {
-                    if (i == 1) {
-                        message.reply(chunk)
+                if ((chunk.split("```").length - 1) % 2 != 0) {
+                    if (!inCodeBlock) {
+                        chunk += "```"
                     } else {
-                        message.channel.send(chunk)
+                        chunk = "```" + chunk
+                        inCodeBlock = false
                     }
+                } else if (inCodeBlock) {
+                    chunk = "```" + chunk + "```"
+                }
+                if (i == 1) {
+                    message.reply(chunk)
+                } else {
+                    message.channel.send(chunk)
                 }
                 response = ""
                 i++
