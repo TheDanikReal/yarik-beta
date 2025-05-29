@@ -8,11 +8,13 @@ const setModel: SlashCommand = {
         .setName("setmodel")
         .setDescription("Sets model of bot")
         .addStringOption(option => option.setName("model").addChoices(
-            { name: "opencoder", value: "open-r1/olympiccoder-32b:free" },
-            { name: "qwen", value: "qwen/qwq-32b:free" },
-            { name: "r1", value: "deepseek/deepseek-r1:free" },
-            { name: "gpt", value: "gpt-4o" },
-            { name: "gemini 2.0 pro", value: "gemini-2.5-pro-exp-03-25" }
+            { name: "qwq", value: "qwen/qwq-32b:free" },
+            { name: "qwen A22B", value: "qwen/qwen3-235b-a22b:free" },
+            { name: "r1 (new)", value: "deepseek/deepseek-r1-0528:free" },
+            { name: "gpt 4o", value: "gpt-4o" },
+            { name: "gpt 4.1", value: "openai/gpt-4.1" },
+            { name: "gemini 2.5 pro", value: "gemini-2.5-pro-exp-03-25" },
+            { name: "gemini flash", value: "gemini-2.5-flash-preview-05-20" }
         ).setDescription("changes used model user side")
         .setRequired(true)),
     async execute(interaction: ChatInputCommandInteraction) { 
