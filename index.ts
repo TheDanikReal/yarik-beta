@@ -274,23 +274,24 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
         for await (const part of stream) {
             let chunk = part.choices[0]?.delta?.content || ""
             logger.trace(chunk)
-            response += chunk
             fullResponse += chunk
+            response += chunk
             if (response.length > 1000) {
-                if ((chunk.split("```").length - 1) % 2 != 0) {
+                if ((response.split("```").length - 1) % 2 != 0) {
                     if (!inCodeBlock) {
-                        chunk += "```"
+                        response += "```"
+                        inCodeBlock = true
                     } else {
-                        chunk = "```" + chunk
+                        response = "```" + response
                         inCodeBlock = false
                     }
                 } else if (inCodeBlock) {
-                    chunk = "```" + chunk + "```"
+                    response = "```" + response + "```"
                 }
                 if (i == 1) {
-                    message.reply(chunk)
+                    message.reply(response)
                 } else {
-                    message.channel.send(chunk)
+                    message.channel.send(response)
                 }
                 response = ""
                 i++
