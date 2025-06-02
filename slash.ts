@@ -11,20 +11,26 @@ const setModel: SlashCommand = {
             { name: "qwq", value: "qwen/qwq-32b:free" },
             { name: "qwen A22B", value: "qwen/qwen3-235b-a22b:free" },
             { name: "r1 (new)", value: "deepseek/deepseek-r1-0528:free" },
+            { name: "r1 (old)", value: "deepseek/deepseek-r1:free" },
             { name: "gpt 4o", value: "gpt-4o" },
             { name: "gpt 4.1", value: "openai/gpt-4.1" },
             { name: "gemini 2.5 pro", value: "gemini-2.5-pro-exp-03-25" },
             { name: "gemini flash", value: "gemini-2.5-flash-preview-05-20" }
         ).setDescription("changes used model user side")
         .setRequired(true)),
-    async execute(interaction: ChatInputCommandInteraction) { 
-        const model = interaction.options.getString("model") as UserData["model"]
-        await database.editUserIfExists(interaction.user.id, model)
-        userData.set(interaction.user.id, {
-            model: model
-        })
-        logger.trace("changing model for " + interaction.user.id + " to " + model)
-        const reply = await interaction.reply("changed model to " + model)
+    async execute(interaction: ChatInputCommandInteraction) {
+        try {
+            const reply = await interaction.reply("changing model")// + model)
+            const model = interaction.options.getString("model") as UserData["model"]
+            await database.editUserIfExists(interaction.user.id, model)
+            userData.set(interaction.user.id, {
+                model: model
+            })
+            reply.edit("changed model to " + model)
+            logger.trace("changed model for " + interaction.user.id + " to " + model)
+        } catch (err) {
+            logger.error(err)
+        }
     }
 }
 
@@ -33,11 +39,15 @@ const clearCache: SlashCommand = {
         .setName("clearcache")
         .setDescription("clears cache for channel"),
     async execute(interaction) {
-        switch (await clearChannelCache(interaction.channelId)) {
-            case true:
-                interaction.reply("removed cache")
-            case false:
-                interaction.reply("cache is already empty")
+        try {
+            switch (await clearChannelCache(interaction.channelId)) {
+                case true:
+                    interaction.reply("removed cache")
+                case false:
+                    interaction.reply("cache is already empty")
+            }
+        } catch (err) {
+            logger.error(err)
         }
     }
 }
@@ -48,11 +58,11 @@ const generateAnswerAround: ContextMenu = {
         .setType(ApplicationCommandType.Message),
     async execute (interaction: MessageContextMenuCommandInteraction<CacheType>) {
         let request: OpenAICompatibleMessage[] = []
-        const cache = generateCache(interaction.channelId)
         const user = bot.user.id
         const target = interaction.targetId
         const sendTyping = setInterval(() => interaction.channel.sendTyping(), 5000)
         interaction.reply("generating response")
+        await generateCache(interaction.channelId)
         const messages = await interaction.channel.messages.fetch({ limit: modalFetchSize,
             before: target
         })

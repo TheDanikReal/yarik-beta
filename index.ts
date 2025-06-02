@@ -228,6 +228,8 @@ export async function generateCache(channelId: string) {
 }
 
 export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<boolean>>) {
+    if (message.content.startsWith(settings.ignorePrefix)) return
+
     const cache = await generateCache(message.channelId)
     const preferences = await getClient(message.author.id)
     const client = preferences[0]
@@ -273,10 +275,10 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
         let usage: CompletionUsage
         for await (const part of stream) {
             let chunk = part.choices[0]?.delta?.content || ""
-            logger.trace(chunk)
-            fullResponse += chunk
+            //logger.trace(chunk)
             response += chunk
             if (response.length > 1000) {
+                fullResponse += response
                 if ((response.split("```").length - 1) % 2 != 0) {
                     if (!inCodeBlock) {
                         response += "```"
@@ -303,6 +305,7 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
                 finishReason = part.choices[0].finish_reason
             }
         }
+        fullResponse += response
         /*if (response.choices[0].finish_reason == "tool_calls") {
             response = await handleTools(message, client, response.choices[0])
         }*/

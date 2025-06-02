@@ -1,6 +1,7 @@
 interface Settings {
     system: string,
     error: string,
+    ignorePrefix: string,
     headers?: Record<string, string>
 }
 
@@ -11,6 +12,7 @@ export const settings: Settings = {
         ` A friend who helps with problems. I have a YouTube channel with 1 thousand subscribers.\n`
         + `personality traits: smart`,
     error: "message creation didn't finish successfully",
+    ignorePrefix: "@ignore",
     headers: {
         "Helicone-Auth": "Bearer " + process.env.HELICONE_TOKEN
     }
