@@ -1,8 +1,9 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ChatInputCommandInteraction, Message, MessageContextMenuCommandInteraction, type CacheType, type OmitPartialGroupDMChannel } from "discord.js"
 import { bot, generateAnswer, fetchSize, generateCache, logger, userData, } from "./index.ts"
 import { saveData } from "./button.ts"
-import { clearCache, generateAnswerAround, setModel } from "./slash.ts"
+import { clearCache, generateAnswerAround, infoCommand, setModel } from "./slash.ts"
 import { database } from "./base.ts"
+import { info } from "node:console"
 
 export async function contextMenuHandler(interaction: MessageContextMenuCommandInteraction) {
     generateAnswerAround.execute(interaction)
@@ -15,6 +16,9 @@ export function slashCommandHandler(interaction: ChatInputCommandInteraction) {
             break
         case "clearcache":
             clearCache.execute(interaction)
+            break
+        case "info":
+            infoCommand.execute(interaction)
             break
         default:
             logger.trace("slash command is not found: " + interaction.commandName)

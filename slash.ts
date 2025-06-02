@@ -1,4 +1,4 @@
-import { Application, ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, SlashCommandBuilder, type APIApplicationCommandOptionChoice, type CacheType } from "discord.js"
+import { Application, ApplicationCommandType, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, ContainerBuilder, ContextMenuCommandBuilder, Message, MessageContextMenuCommandInteraction, MessageFlags, SectionBuilder, SeparatorSpacingSize, SlashCommandBuilder, TextDisplayBuilder, type APIApplicationCommandOptionChoice, type CacheType } from "discord.js"
 import { type UserData, type SlashCommand, userData, type Interaction, type ContextMenu, generateAnswer, generateCache, cacheSize, type OpenAICompatibleMessage, bot, generateResponse, getClient, linePage, simplePage, modalFetchSize, clearChannelCache, logger } from "./index.ts"
 import { database } from "./base.ts"
 import { settings } from "./settings.ts"
@@ -100,6 +100,43 @@ const generateAnswerAround: ContextMenu = {
     }
 }
 
-const commands: Interaction[] = [ setModel, clearCache, generateAnswerAround ]
+const infoCommand: SlashCommand = {
+    data: new SlashCommandBuilder()
+        .setName("info")
+        .setDescription("shows information about bot"),
+    async execute(interaction) {
+        try {
+            const container = new ContainerBuilder()
+            const description = new TextDisplayBuilder().setContent(
+                `# welcome to Yarik
+                Yarik is a discord bot for interacting with various LLMs
+                `
+            )
+            container.addTextDisplayComponents(description)
+            container.addSeparatorComponents((separator) => separator.setSpacing(
+                SeparatorSpacingSize.Large
+            ).setDivider(true))
+            const sourceDescription = new TextDisplayBuilder().setContent(
+                "Yarik is open source"
+            )
+            const sourceButton = new ButtonBuilder()
+                .setStyle(ButtonStyle.Link)
+                .setLabel("view source code")
+                .setURL("https://github.com/TheDanikReal/yarik-beta/")
+            const section = new SectionBuilder()
+                .addTextDisplayComponents(sourceDescription)
+                .setButtonAccessory(sourceButton)
+            container.addSectionComponents(section)
+            await interaction.reply({
+                components: [container],
+                flags: MessageFlags.IsComponentsV2
+            })
+        } catch (err) {
+            logger.error(err)
+        }
+    }
+}
 
-export { commands, setModel, clearCache, generateAnswerAround }
+const commands: Interaction[] = [ setModel, clearCache, generateAnswerAround, infoCommand ]
+
+export { commands, setModel, clearCache, generateAnswerAround, infoCommand }
