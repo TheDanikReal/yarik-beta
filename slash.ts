@@ -40,6 +40,10 @@ const clearCache: SlashCommand = {
         .setDescription("clears cache for channel"),
     async execute(interaction) {
         try {
+            if (!interaction.memberPermissions.has("ManageMessages", true)) {
+                interaction.reply("user must have manage messages permission")
+                return
+            }
             switch (await clearChannelCache(interaction.channelId)) {
                 case true:
                     interaction.reply("removed cache")

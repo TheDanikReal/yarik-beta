@@ -3,7 +3,6 @@ import { bot, generateAnswer, fetchSize, generateCache, logger, userData, } from
 import { saveData } from "./button.ts"
 import { clearCache, generateAnswerAround, infoCommand, setModel } from "./slash.ts"
 import { database } from "./base.ts"
-import { info } from "node:console"
 
 export async function contextMenuHandler(interaction: MessageContextMenuCommandInteraction) {
     generateAnswerAround.execute(interaction)
@@ -92,7 +91,7 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         }
         message.reply("fetched messages")
         return true
-    ////} else if (message.content.includes("clear")) {
+    //} else if (message.content.includes("clear")) {
     //    database.cacheUsers.clear()
     //    database.cacheChannels.clear()
     //    message.reply("cleared cache")
