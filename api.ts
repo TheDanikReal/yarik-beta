@@ -1,4 +1,5 @@
 import * as http from "node:http"
+import { settings } from "./settings.ts"
 import { startBot, bot, logger } from "./index.ts"
 
 interface DiscordStatus {
@@ -33,7 +34,7 @@ let discordStatus = false
 fetchDiscordStatus()
 
 const server = http.createServer(async (req, res) => {
-    if (discordStatusRefreshed <= Date.now() - 1000 * 60 * 30) {
+    if (discordStatusRefreshed <= Date.now() - 1000 * 60 * settings.statusCooldown) {
         await fetchDiscordStatus()
         console.log("refreshed status")
         discordStatusRefreshed = Date.now()

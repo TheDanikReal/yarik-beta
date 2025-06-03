@@ -2,7 +2,8 @@ interface Settings {
     system: string,
     error: string,
     ignorePrefix: string,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
+    statusCooldown: number
 }
 
 export const settings: Settings = {
@@ -15,5 +16,6 @@ export const settings: Settings = {
     ignorePrefix: "@ignore",
     headers: {
         "Helicone-Auth": "Bearer " + process.env.HELICONE_TOKEN
-    }
+    },
+    statusCooldown: 5
 }

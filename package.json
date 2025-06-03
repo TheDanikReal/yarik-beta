@@ -5,7 +5,7 @@
     "discord.js": "^14.19.3",
     "dotenv": "^16.5.0",
     "lru-cache": "^11.1.0",
-    "openai": "^4.103.0",
+    "openai": "^5.0.2",
     "pino": "^9.7.0"
   },
   "devDependencies": {
