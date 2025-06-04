@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, ChatInputCommandInteraction, type OmitPartialGroupDMChannel, Message, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, type GuildTextBasedChannel, type Snowflake, codeBlock } from "discord.js"
+import { Client, Events, GatewayIntentBits, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, ChatInputCommandInteraction, type OmitPartialGroupDMChannel, Message, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, type GuildTextBasedChannel, type Snowflake, codeBlock, ChannelType, Partials } from "discord.js"
 import { buttonCommandHandler, commmandHandler, contextMenuHandler, slashCommandHandler } from "./commands.ts"
 import type { ChatCompletionMessageParam, CompletionUsage } from "openai/resources/index.mjs"
 import { tools, toolDescriptions, type Tools } from "./tools.ts"
@@ -42,7 +42,9 @@ if (!process.env.API_ENDPOINT || !process.env.API_TOKEN || !process.env.TOKEN) {
 export const logger = pino({
     level: process.env.LOG_LEVEL || "info",
 })
-export const bot = new Client({ intents: [GatewayIntentBits.Guilds, "MessageContent", "GuildMessages", "DirectMessages"]})
+export const bot = new Client({ intents: [GatewayIntentBits.Guilds, "MessageContent", "GuildMessages", "DirectMessages", "DirectMessageTyping"],
+    partials: [Partials.Channel]
+})
 const openaiClient = new OpenAI({ apiKey: process.env.API_TOKEN,
     baseURL: process.env.API_ENDPOINT,
     defaultHeaders: settings.headers })
@@ -409,7 +411,7 @@ bot.on(Events.MessageCreate, async (message) => {
         }
     }
     const channel = await database.findChannel(message.channelId)
-    if (channel?.enabled) {
+    if (channel?.enabled || message.channel.type == ChannelType.DM) {
         generateAnswer(message)
     }
 })
