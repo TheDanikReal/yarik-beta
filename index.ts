@@ -9,6 +9,7 @@ import OpenAI from "openai"
 import "dotenv/config"
 import { database } from "./base.ts"
 import { settings } from "./settings.ts"
+import { cacheSize, fetchMaxSize } from "./consts.ts"
 
 export interface SlashCommand {
     data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder,
@@ -49,9 +50,6 @@ const openaiClient = new OpenAI({ apiKey: process.env.API_TOKEN,
     baseURL: process.env.API_ENDPOINT,
     defaultHeaders: settings.headers })
 const models = new Map<string, OpenAI>()
-export const cacheSize = Number(process.env.CACHE_SIZE) || 10
-export const modalFetchSize = 10
-export const fetchSize = Math.min(cacheSize, 100)
 let modelsCount = 0
 
 let previousModel: OpenAI = openaiClient
@@ -82,7 +80,7 @@ export let slashCommands = new Map<string, SlashCommand>()
 export let userData = new Map<string, UserData>()
 
 export async function fetchMessages(size: number, channel: GuildTextBasedChannel, target: string) {
-    const messages = await channel.messages.fetch({ limit: Math.min(fetchSize, size) })
+    const messages = await channel.messages.fetch({ limit: Math.min(fetchMaxSize, size) })
         logger.debug("target: " + target)
         logger.debug("size: " + size)
         let request: [OpenAICompatibleMessage, Snowflake][] = []
@@ -173,7 +171,7 @@ export async function linePage(str: string): Promise<string[] | false> {
             }
         }
     }
-    return messages // await fixMarkup(messages)
+    return messages
 }
 
 export async function fixMarkup(messages: string[]): Promise<string[]> {
@@ -266,7 +264,7 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             temperature: 1.0,
             top_p: 1.0,
             model: model,
-            //tools: toolDescriptions,
+            //tools: [{ type: "function", function: { name: "google_search" }}],
             //tool_choice: "auto"
         })
         let i = 1

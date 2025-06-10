@@ -1,7 +1,9 @@
-import { Application, ApplicationCommandType, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, ContainerBuilder, ContextMenuCommandBuilder, Message, MessageContextMenuCommandInteraction, MessageFlags, SectionBuilder, SeparatorSpacingSize, SlashCommandBuilder, TextDisplayBuilder, type APIApplicationCommandOptionChoice, type CacheType } from "discord.js"
-import { type UserData, type SlashCommand, userData, type Interaction, type ContextMenu, generateAnswer, generateCache, cacheSize, type OpenAICompatibleMessage, bot, generateResponse, getClient, linePage, simplePage, modalFetchSize, clearChannelCache, logger } from "./index.ts"
+import { ApplicationCommandType, ButtonBuilder, ButtonStyle, ChannelType, ChatInputCommandInteraction, ContainerBuilder, ContextMenuCommandBuilder, Message, MessageContextMenuCommandInteraction, MessageFlags, SectionBuilder, SeparatorSpacingSize, SlashCommandBuilder, TextDisplayBuilder, type CacheType, type GuildTextBasedChannel } from "discord.js"
+import { type UserData, type SlashCommand, userData, type Interaction, type ContextMenu, generateCache, type OpenAICompatibleMessage, bot, generateResponse, getClient, linePage, simplePage, clearChannelCache, logger } from "./index.ts"
+import { modalFetchSize } from "./consts.ts"
 import { database } from "./base.ts"
 import { settings } from "./settings.ts"
+import { fetchMaxSize } from "./consts.ts"
 
 const setModel: SlashCommand = {
     data: new SlashCommandBuilder()
@@ -20,7 +22,7 @@ const setModel: SlashCommand = {
         .setRequired(true)),
     async execute(interaction: ChatInputCommandInteraction) {
         try {
-            const reply = await interaction.reply("changing model")// + model)
+            const reply = await interaction.reply("changing model")
             const model = interaction.options.getString("model") as UserData["model"]
             await database.editUserIfExists(interaction.user.id, model)
             userData.set(interaction.user.id, {
@@ -141,6 +143,59 @@ const infoCommand: SlashCommand = {
     }
 }
 
-const commands: Interaction[] = [ setModel, clearCache, generateAnswerAround, infoCommand ]
+const fetchMessages: SlashCommand = {
+    data: new SlashCommandBuilder()
+        .setName("fetch")
+        .setDescription("fetches messages from a channel")
+        .addIntegerOption(builder => builder.setName("count")
+            .setMaxValue(fetchMaxSize)
+            .setMinValue(0)
+            .setDescription("count of messages to fetch")
+            .setRequired(true))
+        .addUserOption(builder => builder.setName("user")
+            .setDescription("sets user as a bot to fetch messages from")
+            .setRequired(false))
+        .addChannelOption(builder => builder.setName("channel")
+            .setDescription("sets channel to fetch messages on")
+            .setRequired(false)),
+    async execute(interaction) {
+        const cache = await generateCache(interaction.channel.id)
+        let fetchCount = Math.min(interaction.options.getInteger("count", true), fetchMaxSize)
+        let fetchUser = interaction.options.getUser("user", false)?.id
+        let fetchChannel: GuildTextBasedChannel = interaction.options.getChannel("channel", false,
+            [ChannelType.GuildText])
+        if (!fetchUser) {
+            fetchUser = bot.user.id
+        }
+        if (!fetchChannel) {
+            fetchChannel = interaction.channel
+        } else if (fetchChannel.type != ChannelType.GuildText) {
+            interaction.reply("this command can only be used on text channels")
+            return
+        }
+        const message = await interaction.reply("fetching messages")
+        logger.trace("generating cache for " + fetchChannel.id)
+        const messages = await fetchChannel.messages.fetch({ limit: Math.min(fetchMaxSize, fetchCount) })
+        logger.trace("target: " + fetchUser)
+        logger.trace("size: " + fetchCount)
+        let request: Message[] = []
+        for (let entry of messages.entries()) {
+            request.push(entry[1])
+        }
+        request.reverse()
+        for (let entry of request) {
+            cache.set(entry.id, {
+                role: fetchUser == entry.author.id ? "assistant" : "user",
+                content: entry.cleanContent + "\nauthor: " + entry.author.globalName
+            })
+            process.stdout.write(entry.cleanContent)
+        }
+        await message.edit("fetched messages")
+    },
+}
 
-export { commands, setModel, clearCache, generateAnswerAround, infoCommand }
+const commands: Interaction[] = [ setModel, clearCache, generateAnswerAround, infoCommand,
+    fetchMessages
+ ]
+
+export { commands, setModel, clearCache, generateAnswerAround, infoCommand, fetchMessages }

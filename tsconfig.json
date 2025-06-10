@@ -9,5 +9,5 @@
        "verbatimModuleSyntax": true
     },
     "files": ["index.ts", "deploy.ts", "api.ts"],
-    "include": ["slash", "*.ts"]
+    "include": ["slash/", "*.ts"]
   } 

@@ -1,8 +1,9 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ChatInputCommandInteraction, Message, MessageContextMenuCommandInteraction, type CacheType, type OmitPartialGroupDMChannel } from "discord.js"
-import { bot, generateAnswer, fetchSize, generateCache, logger, userData, } from "./index.ts"
+import { bot, generateAnswer, generateCache, logger, userData, } from "./index.ts"
 import { saveData } from "./button.ts"
-import { clearCache, generateAnswerAround, infoCommand, setModel } from "./slash.ts"
+import { clearCache, fetchMessages, generateAnswerAround, infoCommand, setModel } from "./slash.ts"
 import { database } from "./base.ts"
+import { fetchMaxSize } from "./consts.ts"
 
 export async function contextMenuHandler(interaction: MessageContextMenuCommandInteraction) {
     generateAnswerAround.execute(interaction)
@@ -19,6 +20,8 @@ export function slashCommandHandler(interaction: ChatInputCommandInteraction) {
         case "info":
             infoCommand.execute(interaction)
             break
+        case "fetch":
+            fetchMessages.execute(interaction)
         default:
             logger.trace("slash command is not found: " + interaction.commandName)
             break
@@ -71,9 +74,9 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
            options[2] = bot.user.id
         }
         logger.trace("generating cache for " + message.channelId + "with settings: " + options)
-        const userSize = Number(options[3]) | fetchSize
+        const userSize = Number(options[3]) | fetchMaxSize
         const channel = message.channel
-        const messages = await channel.messages.fetch({ limit: Math.min(fetchSize, userSize) })
+        const messages = await channel.messages.fetch({ limit: Math.min(fetchMaxSize, userSize) })
         const target = options[2]
         logger.trace("target: " + target)
         logger.trace("size: " + userSize)
