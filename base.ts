@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from "@prisma/client"
+import { Prisma, PrismaClient } from "./generated/prisma/client.ts"
 import { LRUCache } from "lru-cache"
 
 class PrismaDatabase {
@@ -41,7 +41,7 @@ class PrismaDatabase {
         }
     }
     async addChannel(channelId: string, enabled: boolean) {
-        this.cacheChannels.set(channelId, { id: channelId, enabled: enabled})
+        this.cacheChannels.set(channelId, { id: channelId, enabled: enabled })
         return await this.prisma.channel.create({
             data: {
                 id: channelId,
@@ -50,20 +50,23 @@ class PrismaDatabase {
         })
     }
     async editChannelIfExists(channelId: string, enabled: boolean) {
-        this.cacheChannels.set(channelId, { id: channelId, enabled: enabled})
-        if (await this.prisma.channel.findFirst({
-            where: {
-                id: channelId
-            }
-        })) {
+        this.cacheChannels.set(channelId, { id: channelId, enabled: enabled })
+        if (
+            await this.prisma.channel.findFirst({
+                where: {
+                    id: channelId
+                }
+            })
+        ) {
             return await this.prisma.channel.update({
-            where: {
-                id: channelId
-            },
-            data: {
-                enabled: enabled
-            }
-        })} else {
+                where: {
+                    id: channelId
+                },
+                data: {
+                    enabled: enabled
+                }
+            })
+        } else {
             return await this.prisma.channel.create({
                 data: {
                     id: channelId,
@@ -82,10 +85,11 @@ class PrismaDatabase {
                     id: userId
                 }
             })
-            this.cacheUsers.set(userId, {...user })
+            this.cacheUsers.set(userId, { ...user })
             return user
         }
     }
+    // deno-lint-ignore require-await
     async addUser(userId: string, model: string) {
         this.cacheUsers.set(userId, { id: userId, model: model })
         return this.prisma.user.create({
@@ -108,11 +112,13 @@ class PrismaDatabase {
     }
     async editUserIfExists(userId: string, model: string) {
         this.cacheUsers.set(userId, { id: userId, model: model })
-        if (await this.prisma.user.findFirst({
-            where: {
-                id: userId
-            }
-        })) {
+        if (
+            await this.prisma.user.findFirst({
+                where: {
+                    id: userId
+                }
+            })
+        ) {
             return this.prisma.user.update({
                 where: {
                     id: userId

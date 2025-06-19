@@ -137,3 +137,5 @@ prisma/*-journal
 test.ts
 bundle.cjs
 bundle.mjs
+generated/prisma
+generated/

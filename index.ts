@@ -1,8 +1,8 @@
-import { Client, Events, GatewayIntentBits, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, ChatInputCommandInteraction, type OmitPartialGroupDMChannel, Message, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, type GuildTextBasedChannel, type Snowflake, codeBlock, ChannelType, Partials } from "discord.js"
+import { ChannelType, ChatInputCommandInteraction, Client, ContextMenuCommandBuilder, Events, GatewayIntentBits, type GuildTextBasedChannel, Message, MessageContextMenuCommandInteraction, type OmitPartialGroupDMChannel, Partials, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, type Snowflake } from "discord.js"
 import { buttonCommandHandler, commmandHandler, contextMenuHandler, slashCommandHandler } from "./commands.ts"
 import type { ChatCompletionMessageParam, CompletionUsage } from "openai/resources/index.mjs"
-import { tools, toolDescriptions, type Tools } from "./tools.ts"
-import { fileURLToPath } from "node:url"
+import { toolDescriptions, tools } from "./tools.ts"
+import process from "node:process"
 import { LRUCache } from "lru-cache"
 import { pino } from "pino"
 import OpenAI from "openai"
@@ -10,15 +10,18 @@ import "dotenv/config"
 import { database } from "./base.ts"
 import { settings } from "./settings.ts"
 import { cacheSize, fetchMaxSize } from "./consts.ts"
+import console from "node:console"
+import { clearInterval, setInterval } from "node:timers"
+import { fileURLToPath } from "node:url"
 
 export interface SlashCommand {
     data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder,
-    execute: (interaction: ChatInputCommandInteraction) => {}
+    execute: (interaction: ChatInputCommandInteraction) => Promise<void>
 }
 
 export interface ContextMenu {
     data: ContextMenuCommandBuilder,
-    execute: (interaction: MessageContextMenuCommandInteraction) => {}
+    execute: (interaction: MessageContextMenuCommandInteraction) => Promise<void>
 }
 
 export type Interaction = SlashCommand | ContextMenu
@@ -35,20 +38,34 @@ interface GuildCache {
 
 // console.log(process.env.API_ENDPOINT, " ", process.env.API_TOKEN)
 
-if (!process.env.API_ENDPOINT || !process.env.API_TOKEN || !process.env.TOKEN) {
+if (
+    !process.env.API_ENDPOINT || !process.env.API_TOKEN ||
+    !process.env.TOKEN || !process.env.MODEL_NAME
+) {
     console.log("fill .env before launching index.ts")
     process.exit(1)
 }
 
 export const logger = pino({
     level: process.env.LOG_LEVEL || "info",
+    base: undefined
 })
-export const bot = new Client({ intents: [GatewayIntentBits.Guilds, "MessageContent", "GuildMessages", "DirectMessages", "DirectMessageTyping"],
+export const bot = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        "MessageContent",
+        "GuildMessages",
+        "DirectMessages",
+        "DirectMessageTyping"
+    ],
     partials: [Partials.Channel]
 })
-const openaiClient = new OpenAI({ apiKey: process.env.API_TOKEN,
+const defaultModel = process.env["MODEL_NAME"]
+const openaiClient = new OpenAI({
+    apiKey: process.env.API_TOKEN,
     baseURL: process.env.API_ENDPOINT,
-    defaultHeaders: settings.headers })
+    defaultHeaders: settings.headers
+})
 const models = new Map<string, OpenAI>()
 let modelsCount = 0
 
@@ -60,7 +77,11 @@ for (let i = 1; i < 10; i++) {
     const model = process.env["MODEL_NAME" + i]
     if (token && endpoint && model) {
         logger.info("found " + model)
-        const client = new OpenAI({ baseURL: endpoint, apiKey: token, defaultHeaders: settings.headers })
+        const client = new OpenAI({
+            baseURL: endpoint,
+            apiKey: token,
+            defaultHeaders: settings.headers
+        })
         models.set(model, client)
         previousModel = client
     } else if (model) {
@@ -73,40 +94,43 @@ for (let i = 1; i < 10; i++) {
     }
 }
 
-models.set(process.env["MODEL_NAME"], openaiClient)
+models.set(defaultModel, openaiClient)
 
-export let guildCache: GuildCache = {}
-export let slashCommands = new Map<string, SlashCommand>()
-export let userData = new Map<string, UserData>()
+export const guildCache: GuildCache = {}
+export const slashCommands = new Map<string, SlashCommand>()
+export const userData = new Map<string, UserData>()
 
 export async function fetchMessages(size: number, channel: GuildTextBasedChannel, target: string) {
     const messages = await channel.messages.fetch({ limit: Math.min(fetchMaxSize, size) })
-        logger.debug("target: " + target)
-        logger.debug("size: " + size)
-        let request: [OpenAICompatibleMessage, Snowflake][] = []
-        let previousMessage = ""
-        let previousAuthor = ""
-        for (let entry of messages.entries()) {
-            if (entry[1].author.id == previousAuthor) {
-                previousMessage = entry[1].cleanContent
-            } else {
-                previousAuthor = entry[1].author.id
-            }
-            request.push([{
-                role: target == entry[1].author.id ? "assistant" : "user",
-                content: entry[1].cleanContent
-            }, entry[1].id])
-            // guildCache[message.channelId].set()
-        }
-        for (let entry of request) {
-            guildCache[channel.id].set(entry[1], entry[0])
-        }
+    const request: [OpenAICompatibleMessage, Snowflake][] = []
+    // let previousMessage = ""
+    // let previousAuthor = ""
+    logger.debug("target: " + target)
+    logger.debug("size: " + size)
+    for (const entry of messages.entries()) {
+        //if (entry[1].author.id == previousAuthor) {
+        //    previousMessage = entry[1].cleanContent
+        //} else {
+        //    previousAuthor = entry[1].author.id
+        //}
+        request.push([{
+            role: target == entry[1].author.id ? "assistant" : "user",
+            content: entry[1].cleanContent
+        }, entry[1].id])
+        // guildCache[message.channelId].set()
+    }
+    for (const entry of request) {
+        guildCache[channel.id].set(entry[1], entry[0])
+    }
 }
 
-export async function handleTools(message: OmitPartialGroupDMChannel<Message<boolean>>, 
-    client: OpenAI, answer: OpenAI.Chat.Completions.ChatCompletion.Choice) {
-    
-    const toolCall = answer.message.tool_calls[0]
+export async function handleTools(
+    message: OmitPartialGroupDMChannel<Message<boolean>>,
+    client: OpenAI,
+    answer: OpenAI.Chat.Completions.ChatCompletion.Choice
+) {
+    const toolCall = answer.message.tool_calls?.[0]
+    if (!toolCall) return
     guildCache[message.channelId].set(message.id, {
         role: "assistant",
         content: answer.message.content
@@ -119,14 +143,16 @@ export async function handleTools(message: OmitPartialGroupDMChannel<Message<boo
         role: "tool",
         content: toolResponse
     })
-    console.log("generated image with prompt " + toolCall.function.arguments + 
-        " with response " + toolResponse)
+    console.log(
+        "generated image with prompt " + toolCall.function.arguments +
+            " with response " + toolResponse
+    )
     return await client.chat.completions.create({
         messages: await generateRequest(message.channelId, message.author.displayName),
         tools: toolDescriptions,
         temperature: 1.0,
         top_p: 1.0,
-        model: process.env.MODEL_NAME
+        model: defaultModel
     })
 }
 
@@ -141,7 +167,7 @@ export async function clearChannelCache(channelId: string): Promise<boolean> {
 }
 
 export async function simplePage(str: string): Promise<string[]> {
-    let answers: string[] = []
+    const answers: string[] = []
     console.log(Math.ceil(str.length / 2000))
     for (let i = 0; i < Math.ceil(str.length / 2000); i++) {
         answers.push(str.slice(i * 2000, (i + 1) * 2000))
@@ -152,11 +178,11 @@ export async function simplePage(str: string): Promise<string[]> {
 
 export async function linePage(str: string): Promise<string[] | false> {
     const lines = str.split("\n").length
-    let messages: string[] = []
+    const messages: string[] = []
     let answer = ""
     let length = 0
     let i = 0
-    for (let line of str.split("\n")) {
+    for (const line of str.split("\n")) {
         i++
         if (Math.floor((line.length + length) / 2000) != 0) {
             messages.push(answer)
@@ -175,7 +201,7 @@ export async function linePage(str: string): Promise<string[] | false> {
 }
 
 export async function fixMarkup(messages: string[]): Promise<string[]> {
-    let result: string[] = []
+    const result: string[] = []
     let active = false
     for (let i = 0; i < messages.length; i++) {
         let editedMessage = messages[i]
@@ -193,8 +219,8 @@ export async function fixMarkup(messages: string[]): Promise<string[]> {
 }
 
 export async function getModels(): Promise<string[]> {
-    let result = []
-    result.push(process.env.MODEL_NAME)
+    const result = []
+    result.push(defaultModel)
     console.log(modelsCount)
     for (let i = 1; i < modelsCount; i++) {
         console.log(process.env["MODEL_NAME" + i])
@@ -217,7 +243,7 @@ export async function startBot(): Promise<boolean> {
     }
 }
 
-export async function generateCache(channelId: string) {
+export async function generateCache(channelId: Snowflake) {
     if (!guildCache[channelId]) {
         guildCache[channelId] = new LRUCache({
             max: cacheSize
@@ -243,27 +269,31 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
         content += `\nreplying to message by ${reference.author}: ${referenceInfo}`
     }
 
-    cache.set(message.id, { role: "user", 
-        content: message.content + "\nauthor: " + message.author.displayName })
+    cache.set(message.id, {
+        role: "user",
+        content: message.content + "\nauthor: " + message.author.displayName
+    })
 
     const request: OpenAICompatibleMessage[] = []
-    for (let entry of cache.entries()) {
+    for (const entry of cache.entries()) {
         request.push(entry[1])
     }
 
-    request.push({ role: "system",
-        content: settings.system.replace("{author}", message.author.displayName) })
+    request.push({
+        role: "system",
+        content: settings.system.replace("{author}", message.author.displayName)
+    })
     request.reverse()
-    message.channel.sendTyping()
+    //message.channel.sendTyping()
     const sendTyping = setInterval(() => message.channel.sendTyping(), 5000)
     try {
-        let stream = await client.chat.completions.create({
+        const stream = await client.chat.completions.create({
             stream: true,
             stream_options: { include_usage: true },
             messages: request,
             temperature: 1.0,
             top_p: 1.0,
-            model: model,
+            model: model
             //tools: [{ type: "function", function: { name: "google_search" }}],
             //tool_choice: "auto"
         })
@@ -272,9 +302,16 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
         let fullResponse = ""
         let finishReason = ""
         let inCodeBlock = false
-        let usage: CompletionUsage
+        let usage: CompletionUsage = {
+            // deno-lint-ignore camelcase
+            total_tokens: 0,
+            // deno-lint-ignore camelcase
+            completion_tokens: 0,
+            // deno-lint-ignore camelcase
+            prompt_tokens: 0
+        }
         for await (const part of stream) {
-            let chunk = part.choices[0]?.delta?.content || ""
+            const chunk = part.choices[0]?.delta?.content || ""
             //logger.trace(chunk)
             response += chunk
             if (response.length > 1000) {
@@ -319,13 +356,12 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             if (!messages) {
                 messages = await simplePage(answer)
             }
-            let reply = await message.channel.send(messages[0])
+            const reply = await message.channel.send(messages[0])
             for (let i = 1; i < messages.length; i++) {
                 const pagedMessage = messages[i]
                 await message.channel.send(pagedMessage)
             }
-            cache.set(reply.id, { role: "assistant", 
-                content: fullResponse })
+            cache.set(reply.id, { role: "assistant", content: fullResponse })
             return
         }
         let reply: Message<boolean>
@@ -334,8 +370,7 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
         } else {
             reply = await message.channel.send(answer)
         }
-        cache.set(reply.id, { role: "assistant", 
-            content: fullResponse })
+        cache.set(reply.id, { role: "assistant", content: fullResponse })
     } catch (err) {
         message.reply(settings.error)
         logger.error(err)
@@ -344,14 +379,16 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
     return
 }
 
-export async function generateResponse(messages: OpenAICompatibleMessage[], userClient?: OpenAI,
+export async function generateResponse(
+    messages: OpenAICompatibleMessage[],
+    userClient?: OpenAI,
     userModel?: string
 ) {
     let client: OpenAI
     let model: string
-    if (!userClient && !userModel) {
+    if (!userClient || !userModel) {
         client = openaiClient
-        model = process.env.MODEL_NAME
+        model = defaultModel
         logger.debug("user settings are not defined")
     } else {
         client = userClient
@@ -366,7 +403,7 @@ export async function generateResponse(messages: OpenAICompatibleMessage[], user
             top_p: 1.0,
             temperature: 1.0
         })
-    } catch (err) {
+    } catch (_err) {
         return false
     }
 }
@@ -377,20 +414,23 @@ export async function generateAdditionalInfo(message: Message) {
 
 export async function getClient(user: string): Promise<[OpenAI, string]> {
     const userData = await database.findUser(user)
-    const model = userData?.model
+    const model = userData?.model || ""
     const userClient = models.get(model)
     if (userClient) {
         logger.trace("model for " + user + "found: " + model)
         return [userClient, model]
     } else {
         logger.trace("model for " + user + " not found")
-        return [openaiClient, process.env.MODEL_NAME]
+        return [openaiClient, defaultModel]
     }
 }
 
-async function generateRequest(channelId: string, author: string): Promise<OpenAICompatibleMessage[]> {
+async function generateRequest(
+    channelId: string,
+    author: string
+): Promise<OpenAICompatibleMessage[]> {
     const request: OpenAICompatibleMessage[] = []
-    for (let entry of guildCache[channelId].entries()) {
+    for (const entry of guildCache[channelId].entries()) {
         request.push(entry[1])
         logger.trace(entry[0] + ": " + entry[1].content)
     }
@@ -403,14 +443,18 @@ bot.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) {
         return
     }
-    if (message.content.includes(bot.user.id)) {
-        if (commmandHandler(message)) {
+    if (message.content.includes(bot.user?.id as string)) {
+        if (await commmandHandler(message)) {
             return
         }
     }
     const channel = await database.findChannel(message.channelId)
     if (channel?.enabled || message.channel.type == ChannelType.DM) {
-        generateAnswer(message)
+        try {
+            generateAnswer(message)
+        } catch (err) {
+            logger.error(err)
+        }
     }
 })
 
@@ -426,7 +470,7 @@ bot.on(Events.MessageUpdate, async (message) => {
     const cache = guildCache[message.channelId]
     const entry = cache?.get(message.id)
     if (entry) {
-        cache.set(message.id, { role: "user", content: message.content })
+        cache.set(message.id, { role: "user", content: message.content as string })
     }
 })
 
@@ -454,7 +498,7 @@ bot.on("ready", async (ready) => {
     logger.info("using " + process.env.MODEL_NAME + " model")
 })
 
-process.on("SIGINT", async (signal) => {
+process.on("SIGINT", async (_signal) => {
     console.log("quitting")
     await database.disconnect()
     process.exit(0)
@@ -465,12 +509,12 @@ if (!process.env.TOKEN) {
     process.exit(1)
 }
 
-const url = import.meta.url ? import.meta.url : "file:"
+const url = (import.meta as { url: string }).url || "file:"
 let main = false
 
 try {
     main = !!require.main
-} catch (err) {
+} catch (_err) {
     main = process.argv[1] == fileURLToPath(url)
 }
 

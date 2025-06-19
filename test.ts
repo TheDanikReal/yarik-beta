@@ -1,4 +1,5 @@
-import { linePage, simplePage } from "./index.ts";
+import { simplePage } from "./index.ts";
+import process from "node:process";
 
 const result = await simplePage(`\`\`\`
     async function loadData() {

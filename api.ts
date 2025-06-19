@@ -1,17 +1,19 @@
 import * as http from "node:http"
 import { settings } from "./settings.ts"
-import { startBot, bot, logger } from "./index.ts"
+import { bot, logger, startBot } from "./index.ts"
+import console from "node:console"
+import process from "node:process"
 
 interface DiscordStatus {
     page: {
-        id: string,
-        name: string,
-        url: string,
-        time_zone: string,
+        id: string
+        name: string
+        url: string
+        time_zone: string
         updated_at: string
-    },
+    }
     status: {
-        indicator: string,
+        indicator: string
         description: string
     }
 }

@@ -1,9 +1,19 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ChatInputCommandInteraction, Message, MessageContextMenuCommandInteraction, type CacheType, type OmitPartialGroupDMChannel } from "discord.js"
-import { bot, generateAnswer, generateCache, logger, userData, } from "./index.ts"
+import {
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonInteraction,
+    type CacheType,
+    ChatInputCommandInteraction,
+    Message,
+    MessageContextMenuCommandInteraction,
+    type OmitPartialGroupDMChannel
+} from "discord.js"
+import { bot, generateAnswer, generateCache, logger, userData } from "./index.ts"
 import { saveData } from "./button.ts"
 import { clearCache, fetchMessages, generateAnswerAround, infoCommand, setModel } from "./slash.ts"
 import { database } from "./base.ts"
 import { fetchMaxSize } from "./consts.ts"
+import process from "node:process"
 
 export async function contextMenuHandler(interaction: MessageContextMenuCommandInteraction) {
     generateAnswerAround.execute(interaction)
@@ -22,6 +32,7 @@ export function slashCommandHandler(interaction: ChatInputCommandInteraction) {
             break
         case "fetch":
             fetchMessages.execute(interaction)
+            break
         default:
             logger.trace("slash command is not found: " + interaction.commandName)
             break
@@ -32,6 +43,7 @@ export function buttonCommandHandler(interaction: ButtonInteraction<CacheType>) 
     switch (interaction.customId) {
         case "save":
             saveData(interaction)
+            break
         default:
             break
     }
@@ -52,8 +64,8 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         })
         return true
     } else if (message.content.includes("activate")) {
-        const user = await message.guild.members.fetch({ user: message.author.id })
-        const manageMessages = user.permissions.has("ManageMessages")
+        const user = await message.guild?.members.fetch({ user: message.author.id })
+        const manageMessages = user?.permissions.has("ManageMessages")
         if (!manageMessages) {
             message.reply("user must have rights of managing messages")
             return
@@ -69,9 +81,9 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         return true
     } else if (message.content.includes("fetch")) {
         const cache = await generateCache(message.channelId)
-        let options = message.content.split(" ")
+        const options = message.content.split(" ")
         if (!options[2]) {
-           options[2] = bot.user.id
+            options[2] = bot.user?.id as string
         }
         logger.trace("generating cache for " + message.channelId + "with settings: " + options)
         const userSize = Number(options[3]) | fetchMaxSize
@@ -80,12 +92,12 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         const target = options[2]
         logger.trace("target: " + target)
         logger.trace("size: " + userSize)
-        let request: Message[] = []
-        for (let entry of messages.entries()) {
+        const request: Message[] = []
+        for (const entry of messages.entries()) {
             request.push(entry[1])
         }
         request.reverse()
-        for (let entry of request) {
+        for (const entry of request) {
             cache.set(entry.id, {
                 role: target == entry.author.id ? "assistant" : "user",
                 content: entry.cleanContent + "\nauthor: " + entry.author.globalName
@@ -94,10 +106,10 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         }
         message.reply("fetched messages")
         return true
-    //} else if (message.content.includes("clear")) {
-    //    database.cacheUsers.clear()
-    //    database.cacheChannels.clear()
-    //    message.reply("cleared cache")
+        //} else if (message.content.includes("clear")) {
+        //    database.cacheUsers.clear()
+        //    database.cacheChannels.clear()
+        //    message.reply("cleared cache")
     } else {
         await generateAnswer(message)
         logger.trace("generating answer for " + userData.get(message.author.id))
