@@ -9,7 +9,7 @@
         "indentWidth": 4,
         "useTabs": false,
         "semiColons": false,
-        "trailingCommas": "never" 
+        "trailingCommas": "never"
     },
     "lint": {
         "rules": {

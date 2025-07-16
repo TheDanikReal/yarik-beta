@@ -1,0 +1,19 @@
+FROM denoland/deno:alpine AS base
+
+FROM base AS deps
+WORKDIR /app
+COPY . /app/
+RUN deno install
+RUN deno --allow-env --allow-run esbuild build.ts \
+    --bundle --outfile=build.js --platform=node \
+    --format=esm --packages=external
+RUN deno --allow-env --allow-run --allow-read=bundle.cjs \
+    --allow-write=bundle.cjs build.js
+
+FROM base AS runner
+WORKDIR /app/
+COPY --from=deps /app/bundle.cjs /app/bundle.cjs
+COPY --from=deps /app/generated/ /app/
+EXPOSE 3000
+ENV PORT=3000
+CMD [ "deno", "-A", "bundle.cjs" ]
