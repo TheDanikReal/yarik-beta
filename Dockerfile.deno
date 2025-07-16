@@ -4,6 +4,9 @@ FROM base AS deps
 WORKDIR /app
 COPY . /app/
 RUN deno install
+RUN deno --allow-env --allow-read --allow-run \
+    --allow-write --allow-sys --allow-net \
+    prisma generate --no-engine
 RUN deno --allow-env --allow-run esbuild build.ts \
     --bundle --outfile=build.js --platform=node \
     --format=esm --packages=external
