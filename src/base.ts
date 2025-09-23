@@ -1,8 +1,8 @@
-import { Prisma, PrismaClient } from "./generated/prisma/client.ts"
+import { type Prisma, PrismaClient } from "../generated/prisma/client.ts"
 import { LRUCache } from "lru-cache"
 
 class PrismaDatabase {
-    prisma: PrismaClient<Prisma.PrismaClientOptions>
+    prisma: PrismaClient
     cacheUsers: LRUCache<string, Partial<Prisma.UserCreateInput>>
     cacheChannels: LRUCache<string, Partial<Prisma.ChannelCreateInput>>
     constructor() {

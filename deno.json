@@ -1,7 +1,8 @@
 {
     "lock": false,
     "tasks": {
-        "start": "deno run --allow-env --allow-read=.env,prisma/ --allow-net --allow-sys=hostname index.ts"
+        "start": "deno run --allow-env --allow-read=.env,prisma/ --allow-net --allow-sys=hostname src/index.ts",
+        "build": "deno run --allow-env --allow-run --allow-read=bundle.cjs --allow-write=bundle.cjs build.ts"
     },
     "fmt": {
         "lineWidth": 100,
@@ -14,7 +15,7 @@
     "lint": {
         "rules": {
             "tags": ["recommended"],
-            "include": ["camelcase"],
+            "include": ["camelcase", "no-slow-types"],
             "exclude": ["require-await"]
         }
     },

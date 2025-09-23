@@ -6,8 +6,10 @@
         "moduleResolution": "nodenext",
         "allowImportingTsExtensions": true,
         "rewriteRelativeImportExtensions": true,
-        "verbatimModuleSyntax": true
+        "verbatimModuleSyntax": true,
+        "strict": true,
+        "outDir": "dist/"
     },
-    "files": ["index.ts", "deploy.ts", "api.ts"],
-    "include": ["slash/", "*.ts"]
+    // "files": ["index.ts", "deploy.ts", "api.ts"],
+    "include": ["src/**/*.ts"]
 }

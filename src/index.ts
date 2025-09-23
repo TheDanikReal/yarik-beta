@@ -1,10 +1,10 @@
-import { ChannelType, ChatInputCommandInteraction, Client, ContextMenuCommandBuilder, Events, GatewayIntentBits, type GuildTextBasedChannel, Message, MessageContextMenuCommandInteraction, type OmitPartialGroupDMChannel, Partials, SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, type Snowflake } from "discord.js"
+import { ChannelType, type ChatInputCommandInteraction, Client, type ContextMenuCommandBuilder, Events, GatewayIntentBits, type GuildTextBasedChannel, type Message, type MessageContextMenuCommandInteraction, type OmitPartialGroupDMChannel, Partials, type SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, type Snowflake } from "discord.js"
 import { buttonCommandHandler, commmandHandler, contextMenuHandler, slashCommandHandler } from "./commands.ts"
 import type { ChatCompletionMessageParam, CompletionUsage } from "openai/resources/index.mjs"
-import { toolDescriptions, tools } from "./tools.ts"
+// import { toolDescriptions, tools } from "./tools.ts"
 import process from "node:process"
 import { LRUCache } from "lru-cache"
-import { pino } from "pino"
+import pino from "pino"
 import OpenAI from "openai"
 import "dotenv/config"
 import { database } from "./base.ts"
@@ -27,7 +27,7 @@ export interface ContextMenu {
 export type Interaction = SlashCommand | ContextMenu
 
 export interface UserData {
-    model: "gemini-2.0-pro-exp-02-05" | "gpt-4o"
+    model: "gemini-2.0-pro-exp-02-05" | "gpt-4o" | string
 }
 
 export type OpenAICompatibleMessage = ChatCompletionMessageParam
@@ -60,7 +60,7 @@ export const bot = new Client({
     ],
     partials: [Partials.Channel]
 })
-const defaultModel = process.env["MODEL_NAME"]
+const defaultModel = process.env.MODEL_NAME
 const openaiClient = new OpenAI({
     apiKey: process.env.API_TOKEN,
     baseURL: process.env.API_ENDPOINT,
@@ -72,11 +72,11 @@ let modelsCount = 0
 let previousModel: OpenAI = openaiClient
 
 for (let i = 1; i < 10; i++) {
-    const token = process.env["API_TOKEN" + i]
-    const endpoint = process.env["API_ENDPOINT" + i]
-    const model = process.env["MODEL_NAME" + i]
+    const token = process.env[`API_TOKEN${i}`]
+    const endpoint = process.env[`API_ENDPOINT${i}`]
+    const model = process.env[`MODEL_NAME${i}`]
     if (token && endpoint && model) {
-        logger.info("found " + model)
+        logger.info(`found ${model}`)
         const client = new OpenAI({
             baseURL: endpoint,
             apiKey: token,
@@ -86,10 +86,10 @@ for (let i = 1; i < 10; i++) {
         previousModel = client
     } else if (model) {
         models.set(model, previousModel)
-        logger.info("found model " + model + " from cache")
+        logger.info(`found model ${model} from cache`)
     } else {
         modelsCount = i
-        logger.info("found " + i + " api tokens")
+        logger.info(`found ${i} api tokens`)
         break
     }
 }
@@ -105,8 +105,8 @@ export async function fetchMessages(size: number, channel: GuildTextBasedChannel
     const request: [OpenAICompatibleMessage, Snowflake][] = []
     // let previousMessage = ""
     // let previousAuthor = ""
-    logger.debug("target: " + target)
-    logger.debug("size: " + size)
+    logger.debug(`target: ${target}`)
+    logger.debug(`size: ${size}`)
     for (const entry of messages.entries()) {
         //if (entry[1].author.id == previousAuthor) {
         //    previousMessage = entry[1].cleanContent
@@ -114,7 +114,7 @@ export async function fetchMessages(size: number, channel: GuildTextBasedChannel
         //    previousAuthor = entry[1].author.id
         //}
         request.push([{
-            role: target == entry[1].author.id ? "assistant" : "user",
+            role: target === entry[1].author.id ? "assistant" : "user",
             content: entry[1].cleanContent
         }, entry[1].id])
         // guildCache[message.channelId].set()
@@ -124,8 +124,8 @@ export async function fetchMessages(size: number, channel: GuildTextBasedChannel
     }
 }
 
-export async function handleTools(
-    message: OmitPartialGroupDMChannel<Message<boolean>>,
+/*export async function handleTools(
+    message: OmitPartialGroupDMChannel<Message>,
     client: OpenAI,
     answer: OpenAI.Chat.Completions.ChatCompletion.Choice
 ) {
@@ -154,7 +154,7 @@ export async function handleTools(
         top_p: 1.0,
         model: defaultModel
     })
-}
+}*/
 
 export async function clearChannelCache(channelId: string): Promise<boolean> {
     const cache = guildCache[channelId]
@@ -184,15 +184,15 @@ export async function linePage(str: string): Promise<string[] | false> {
     let i = 0
     for (const line of str.split("\n")) {
         i++
-        if (Math.floor((line.length + length) / 2000) != 0) {
+        if (Math.floor((line.length + length) / 2000) !== 0) {
             messages.push(answer)
             answer = line
             length = line.length + 3
-        } else if (i == lines) {
+        } else if (i === lines) {
             messages.push(answer + line)
         } else {
             if (line.length < 2000) {
-                answer += line + "\n"
+                answer += `${line}\n`
                 length += line.length + 3
             }
         }
@@ -207,9 +207,9 @@ export async function fixMarkup(messages: string[]): Promise<string[]> {
         let editedMessage = messages[i]
         if (active) {
             active = false
-            editedMessage = "```" + editedMessage
+            editedMessage = `\`\`\`${editedMessage}`
         }
-        if (editedMessage.split("```").length % 2 != 0) {
+        if (editedMessage.split("```").length % 2 !== 0) {
             active = true
         }
         result.push(editedMessage)
@@ -223,7 +223,7 @@ export async function getModels(): Promise<string[]> {
     result.push(defaultModel)
     console.log(modelsCount)
     for (let i = 1; i < modelsCount; i++) {
-        console.log(process.env["MODEL_NAME" + i])
+        console.log(process.env[`MODEL_NAME${i}`])
     }
     console.log(result)
     return result
@@ -248,7 +248,7 @@ export async function generateCache(channelId: Snowflake) {
         guildCache[channelId] = new LRUCache({
             max: cacheSize
         })
-        logger.info("created new cache map for " + channelId)
+        logger.info(`created new cache map for ${channelId}`)
     }
     return guildCache[channelId]
 }
@@ -271,7 +271,7 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
 
     cache.set(message.id, {
         role: "user",
-        content: message.content + "\nauthor: " + message.author.displayName
+        content: `${content}\nauthor: ${message.author.displayName}`
     })
 
     const request: OpenAICompatibleMessage[] = []
@@ -316,7 +316,7 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             response += chunk
             if (response.length > 1000) {
                 fullResponse += response
-                if ((response.split("```").length - 1) % 2 != 0) {
+                if ((response.split("```").length - 1) % 2 !== 0) {
                     if (!inCodeBlock) {
                         response += "```"
                         inCodeBlock = true
@@ -327,7 +327,7 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
                 } else if (inCodeBlock) {
                     response = "```" + response + "```"
                 }
-                if (i == 1) {
+                if (i === 1) {
                     message.reply(response)
                 } else {
                     message.channel.send(response)
@@ -350,7 +350,7 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
         if (message.attachments.size) {
             additionalData += ", attachments were ignored"
         }
-        const answer = response + "\n" + additionalData
+        const answer = `${response}\n${additionalData}`
         if (answer.length / 2000 >= 1) {
             let messages = await linePage(answer)
             if (!messages) {
@@ -364,8 +364,8 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             cache.set(reply.id, { role: "assistant", content: fullResponse })
             return
         }
-        let reply: Message<boolean>
-        if (i == 1) {
+        let reply: Message
+        if (i === 1) {
             reply = await message.reply(answer)
         } else {
             reply = await message.channel.send(answer)
@@ -395,7 +395,7 @@ export async function generateResponse(
         model = userModel
         logger.debug("settings are defined")
     }
-    logger.trace("using " + model + " model")
+    logger.trace(`using ${model} model`)
     try {
         return client.chat.completions.create({
             messages: messages,
@@ -409,7 +409,7 @@ export async function generateResponse(
 }
 
 export async function generateAdditionalInfo(message: Message) {
-    return message.cleanContent + "\nauthor: " + message.author.globalName
+    return `${message.cleanContent}\nauthor: ${message.author.globalName!}`
 }
 
 export async function getClient(user: string): Promise<[OpenAI, string]> {
@@ -417,10 +417,10 @@ export async function getClient(user: string): Promise<[OpenAI, string]> {
     const model = userData?.model || ""
     const userClient = models.get(model)
     if (userClient) {
-        logger.trace("model for " + user + "found: " + model)
+        logger.trace(`model for ${user} found: ${model}`)
         return [userClient, model]
     } else {
-        logger.trace("model for " + user + " not found")
+        logger.trace(`model for ${user} not found`)
         return [openaiClient, defaultModel]
     }
 }
@@ -432,7 +432,7 @@ async function generateRequest(
     const request: OpenAICompatibleMessage[] = []
     for (const entry of guildCache[channelId].entries()) {
         request.push(entry[1])
-        logger.trace(entry[0] + ": " + entry[1].content)
+        logger.trace(`${entry[0]}: ${entry[1].content}`)
     }
     request.push({ role: "system", content: settings.system.replace("{user}", author) })
     request.reverse()
@@ -449,7 +449,7 @@ bot.on(Events.MessageCreate, async (message) => {
         }
     }
     const channel = await database.findChannel(message.channelId)
-    if (channel?.enabled || message.channel.type == ChannelType.DM) {
+    if (channel?.enabled || message.channel.type === ChannelType.DM) {
         try {
             generateAnswer(message)
         } catch (err) {
@@ -470,7 +470,7 @@ bot.on(Events.MessageUpdate, async (message) => {
     const cache = guildCache[message.channelId]
     const entry = cache?.get(message.id)
     if (entry) {
-        cache.set(message.id, { role: "user", content: message.content as string })
+        cache.set(message.id, { role: "user", content: message.content! })
     }
 })
 
@@ -492,10 +492,10 @@ bot.on(Events.InteractionCreate, async (interaction) => {
 //    console.log(message)
 //})
 
-bot.on("ready", async (ready) => {
-    logger.info(ready.user.displayName + " ready")
-    logger.info("logged in as " + ready.user.id)
-    logger.info("using " + process.env.MODEL_NAME + " model")
+bot.on("clientReady", async (ready) => {
+    logger.info(`${ready.user.displayName} ready`)
+    logger.info(`logged in as ${ready.user.id}`)
+    logger.info(`using ${process.env.MODEL_NAME} model`)
 })
 
 process.on("SIGINT", async (_signal) => {
@@ -515,12 +515,12 @@ let main = false
 try {
     main = !!require.main
 } catch (_err) {
-    main = process.argv[1] == fileURLToPath(url)
+    main = process.argv[1] === fileURLToPath(url)
 }
 
 if (main) {
     try {
-        bot.login(process.env.TOKEN)
+        void bot.login(process.env.TOKEN)
         logger.info("bot is active")
     } catch (err) {
         logger.error(err)

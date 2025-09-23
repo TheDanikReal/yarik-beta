@@ -22,7 +22,7 @@ const rest = new REST().setToken(process.env.TOKEN)
 const requestData: InteractionRequestData[] = []
 
 for (const command of commands) {
-    logger.info("adding command " + command.data.name + " to request")
+    logger.info(`adding command ${command.data.name} to request`)
     requestData.push(command.data.toJSON())
 }
 

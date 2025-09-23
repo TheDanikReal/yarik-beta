@@ -1,4 +1,4 @@
-import { ApplicationCommandType, ButtonBuilder, ButtonStyle, type CacheType, ChannelType, ChatInputCommandInteraction, ContainerBuilder, ContextMenuCommandBuilder, type GuildTextBasedChannel, Message, MessageContextMenuCommandInteraction, MessageFlags, SectionBuilder, SeparatorSpacingSize, SlashCommandBuilder, type TextBasedChannel, TextDisplayBuilder } from "discord.js"
+import { ApplicationCommandType, ButtonBuilder, ButtonStyle, type CacheType, ChannelType, type ChatInputCommandInteraction, ContainerBuilder, ContextMenuCommandBuilder, type GuildTextBasedChannel, type Message, type MessageContextMenuCommandInteraction, MessageFlags, SectionBuilder, SeparatorSpacingSize, SlashCommandBuilder, type TextBasedChannel, TextDisplayBuilder } from "discord.js"
 import { bot, clearChannelCache, type ContextMenu, generateCache, generateResponse, getClient, type Interaction, linePage, logger, type OpenAICompatibleMessage, simplePage, type SlashCommand, type UserData, userData } from "./index.ts"
 import { modalFetchSize } from "./consts.ts"
 import { database } from "./base.ts"
@@ -19,7 +19,7 @@ const setModel: SlashCommand = {
                 { name: "r1 (old)", value: "deepseek/deepseek-r1:free" },
                 { name: "gpt 4o", value: "gpt-4o" },
                 { name: "gpt 4.1", value: "openai/gpt-4.1" },
-                { name: "gemini 2.5 pro", value: "gemini-2.5-pro-exp-03-25" },
+                { name: "gemini 2.5 pro", value: "gemini-2.5-pro" },
                 { name: "gemini flash", value: "gemini-2.5-flash-preview-05-20" }
             ).setDescription("changes used model user side")
                 .setRequired(true)
@@ -32,8 +32,8 @@ const setModel: SlashCommand = {
             userData.set(interaction.user.id, {
                 model: model
             })
-            reply.edit("changed model to " + model)
-            logger.trace("changed model for " + interaction.user.id + " to " + model)
+            reply.edit(`changed model to ${model}`)
+            logger.trace(`changed model for ${interaction.user.id} to ${model}`)
         } catch (err) {
             logger.error(err)
         }
@@ -81,8 +81,8 @@ const generateAnswerAround: ContextMenu = {
         if (!messages) return
         for (const message of messages) {
             request.push({
-                role: message[1].author.id == user ? "assistant" : "user",
-                content: message[1].cleanContent + "\nauthor: " + message[1].author.globalName
+                role: message[1].author.id === user ? "assistant" : "user",
+                content: `${message[1].cleanContent}\nauthor: ${message[1].author.globalName}`
             })
         }
         request.push({
@@ -192,17 +192,17 @@ const fetchMessages: SlashCommand = {
         }
         if (!fetchChannel) {
             fetchChannel = channel
-        } else if (fetchChannel.type != ChannelType.GuildText) {
+        } else if (fetchChannel.type !== ChannelType.GuildText) {
             interaction.reply("this command can only be used on text channels")
             return
         }
         const message = await interaction.reply("fetching messages")
-        logger.trace("generating cache for " + fetchChannel.id)
+        logger.trace(`generating cache for ${fetchChannel.id}`)
         const messages = await fetchChannel.messages.fetch({
             limit: Math.min(fetchMaxSize, fetchCount)
         })
-        logger.trace("target: " + fetchUser)
-        logger.trace("size: " + fetchCount)
+        logger.trace(`target: ${fetchUser}`)
+        logger.trace(`size: ${fetchCount}`)
         const request: Message[] = []
         for (const entry of messages.entries()) {
             request.push(entry[1])
@@ -210,8 +210,8 @@ const fetchMessages: SlashCommand = {
         request.reverse()
         for (const entry of request) {
             cache.set(entry.id, {
-                role: fetchUser == entry.author.id ? "assistant" : "user",
-                content: entry.cleanContent + "\nauthor: " + entry.author.globalName
+                role: fetchUser === entry.author.id ? "assistant" : "user",
+                content: `${entry.cleanContent}\nauthor: ${entry.author.globalName}`
             })
             process.stdout.write(entry.cleanContent)
         }

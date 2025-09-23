@@ -17,7 +17,7 @@ export const settings: Settings = {
     error: "message creation didn't finish successfully",
     ignorePrefix: "@ignore",
     headers: {
-        "Helicone-Auth": "Bearer " + process.env.HELICONE_TOKEN
+        "Helicone-Auth": `Bearer ${process.env.HELICONE_TOKEN}`
     },
     statusCooldown: 5
 }

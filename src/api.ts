@@ -10,8 +10,8 @@ interface DiscordStatus {
         id: string
         name: string
         url: string
-        time_zone: string
-        updated_at: string
+        "time_zone": string
+        "updated_at": string
     }
     status: {
         indicator: string
@@ -22,7 +22,7 @@ interface DiscordStatus {
 async function fetchDiscordStatus() {
     const response = await fetch(url)
     const status = await response.json() as DiscordStatus
-    discordStatus = status.status?.indicator == "none"
+    discordStatus = status.status?.indicator === "none"
     return
 }
 
@@ -36,7 +36,7 @@ async function cacheMessage() {
     cached = true
     setTimeout(() => {
         cached = false
-    }, 5000);
+    }, 5000)
 }
 
 startBot()
@@ -61,5 +61,5 @@ const server = http.createServer(async (req, res) => {
 })
 
 server.listen(port, () => {
-    logger.info("server is running on port ", port, " ")
+    logger.info(`server is running on port ${port}`)
 })

@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js"
+import { type ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js"
 import { logger, type UserData, userData } from "./../index.ts"
 
 module.exports = {

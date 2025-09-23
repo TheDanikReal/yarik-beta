@@ -1,11 +1,10 @@
 import {
     ActionRowBuilder,
     ButtonBuilder,
-    ButtonInteraction,
-    type CacheType,
-    ChatInputCommandInteraction,
-    Message,
-    MessageContextMenuCommandInteraction,
+    type ButtonInteraction,
+    type ChatInputCommandInteraction,
+    type Message,
+    type MessageContextMenuCommandInteraction,
     type OmitPartialGroupDMChannel
 } from "discord.js"
 import { bot, generateAnswer, generateCache, logger, userData } from "./index.ts"
@@ -34,12 +33,12 @@ export function slashCommandHandler(interaction: ChatInputCommandInteraction) {
             fetchMessages.execute(interaction)
             break
         default:
-            logger.trace("slash command is not found: " + interaction.commandName)
+            logger.trace(`slash command is not found: ${interaction.commandName}`)
             break
     }
 }
 
-export function buttonCommandHandler(interaction: ButtonInteraction<CacheType>) {
+export function buttonCommandHandler(interaction: ButtonInteraction) {
     switch (interaction.customId) {
         case "save":
             saveData(interaction)
@@ -49,7 +48,7 @@ export function buttonCommandHandler(interaction: ButtonInteraction<CacheType>) 
     }
 }
 
-export async function commmandHandler(message: OmitPartialGroupDMChannel<Message<boolean>>) {
+export async function commmandHandler(message: OmitPartialGroupDMChannel<Message>) {
     if (message.content.includes("save")) {
         const confirm = new ButtonBuilder()
             .setCustomId("save")
@@ -83,15 +82,15 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         const cache = await generateCache(message.channelId)
         const options = message.content.split(" ")
         if (!options[2]) {
-            options[2] = bot.user?.id as string
+            options[2] = bot.user?.id!
         }
-        logger.trace("generating cache for " + message.channelId + "with settings: " + options)
+        logger.trace(`generating cache for ${message.channelId}with settings: ${options}`)
         const userSize = Number(options[3]) | fetchMaxSize
         const channel = message.channel
         const messages = await channel.messages.fetch({ limit: Math.min(fetchMaxSize, userSize) })
         const target = options[2]
-        logger.trace("target: " + target)
-        logger.trace("size: " + userSize)
+        logger.trace(`target: ${target}`)
+        logger.trace(`size: ${userSize}`)
         const request: Message[] = []
         for (const entry of messages.entries()) {
             request.push(entry[1])
@@ -99,8 +98,8 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         request.reverse()
         for (const entry of request) {
             cache.set(entry.id, {
-                role: target == entry.author.id ? "assistant" : "user",
-                content: entry.cleanContent + "\nauthor: " + entry.author.globalName
+                role: target === entry.author.id ? "assistant" : "user",
+                content: `${entry.cleanContent}\nauthor: ${entry.author.globalName}`
             })
             process.stdout.write(entry.cleanContent)
         }
@@ -112,7 +111,7 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         //    message.reply("cleared cache")
     } else {
         await generateAnswer(message)
-        logger.trace("generating answer for " + userData.get(message.author.id))
+        logger.trace(`generating answer for ${userData.get(message.author.id)}`)
         return false
     }
 }
