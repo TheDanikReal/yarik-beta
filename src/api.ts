@@ -32,7 +32,7 @@ async function cacheMessage() {
         console.log("refreshed status")
         discordStatusRefreshed = Date.now()
     }
-    cachedMessage = `{ "status": ${bot.isReady()}, "discordStatus": ${discordStatus} }`
+    cachedMessage = `{ "status": "${bot.isReady()}", "discordStatus": "${discordStatus}" }`
     cached = true
     setTimeout(() => {
         cached = false
