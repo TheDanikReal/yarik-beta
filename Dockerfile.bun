@@ -1,0 +1,16 @@
+FROM oven/bun:alpine AS base
+
+FROM base AS deps
+WORKDIR /app
+COPY . /app/
+RUN bun install
+RUN bunx prisma generate --no-engine
+RUN bun build.ts
+
+FROM base AS runner
+WORKDIR /app/
+COPY --from=deps /app/bundle.cjs /app/bundle.cjs
+COPY --from=deps /app/generated/ /app/
+EXPOSE 3000
+ENV PORT=3000
+CMD [ "bun", "bundle.cjs" ]
