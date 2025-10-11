@@ -3,7 +3,7 @@ FROM oven/bun:alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY . /app/
-RUN bun install
+RUN bun install --omit=optional
 RUN bunx prisma generate --no-engine
 RUN bun build.ts
 

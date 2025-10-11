@@ -1,0 +1,6 @@
+{
+    "main": "bundle.cjs",
+    "output": "sea.blob",
+    "disableExperimentalSEAWarning": true,
+    "useCodeCache": true
+}

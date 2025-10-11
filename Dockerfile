@@ -3,7 +3,7 @@ FROM node:current-alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY . /app/
-RUN npm ci
+RUN npm ci --omit=optional
 RUN npx esbuild build.ts --bundle \
     --outfile=build.js --platform=node \
     --format=esm --packages=external

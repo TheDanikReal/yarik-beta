@@ -1,0 +1,21 @@
+FROM node:trixie-slim AS base
+
+FROM base AS build
+WORKDIR /app
+COPY . /app/
+RUN npm install --include=optional
+RUN npx esbuild build.ts --bundle \
+    --outfile=build.js --platform=node \
+    --format=esm --packages=external
+RUN node build.js
+RUN npx prisma generate --no-engine
+RUN node --experimental-sea-config sea-config.json
+RUN cp $(command -v node) /yarik
+RUN npx postject /yarik NODE_SEA_BLOB sea.blob \    --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2
+
+FROM debian:trixie-slim AS runner
+WORKDIR /
+COPY --from=build /yarik /yarik
+EXPOSE 3000
+ENV PORT=3000
+CMD [ "/yarik" ]

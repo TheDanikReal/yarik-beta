@@ -17,8 +17,7 @@ RUN deno compile --no-check \
     --allow-sys=hostname --allow-net \
     -o /yarik ./bundle.cjs
 
-FROM gcr.io/distroless/static-debian13 AS runner
-WORKDIR /app/
+FROM debian:trixie-slim AS runner
 COPY --from=deps /yarik /yarik
 COPY --from=deps /app/generated/ /app/
 EXPOSE 3000
