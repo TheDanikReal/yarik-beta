@@ -1,25 +1,27 @@
 {
     "type": "module",
     "dependencies": {
-        "@prisma/client": "^6.17.0",
-        "discord.js": "^14.23.2",
-        "dotenv": "^17.2.2",
-        "lru-cache": "^11.2.1",
-        "openai": "^6.3.0",
-        "pino": "^10.0.0"
+        "@prisma/client": "^6.18.0",
+        "discord.js": "^14.24.2",
+        "dotenv": "^17.2.3",
+        "lru-cache": "^11.2.2",
+        "openai": "^6.7.0",
+        "pino": "^10.1.0"
     },
     "devDependencies": {
         "@prisma/extension-accelerate": "^2.0.2",
-        "esbuild": "^0.25.10",
-        "pino-pretty": "^13.1.1",
-        "prisma": "^6.17.0",
-        "typescript": "^5.9.2"
+        "esbuild": "^0.25.11",
+        "pino-pretty": "^13.1.2",
+        "prisma": "^6.18.0",
+        "typescript": "^5.9.3",
+        "taze": "^19.9.0"
     },
     "optionalDependencies": {
         "postject": "^1.0.0-alpha.6"
     },
     "scripts": {
         "start": "tsc --build --verbose && node dist/index.js",
-        "test": "tsc --build && node dist/test.js"
+        "test": "tsc --build && node dist/test.js",
+        "deps-check": "taze major"
     }
 }

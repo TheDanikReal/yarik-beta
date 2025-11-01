@@ -20,9 +20,13 @@ interface DiscordStatus {
 }
 
 async function fetchDiscordStatus() {
-    const response = await fetch(url)
-    const status = await response.json() as DiscordStatus
-    discordStatus = status.status?.indicator === "none"
+    try {
+        const response = await fetch(url)
+        const status = await response.json() as DiscordStatus
+        discordStatus = status.status?.indicator === "none"
+    } catch (_err) {
+        discordStatus = false
+    }
     return
 }
 
