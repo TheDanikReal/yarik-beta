@@ -7,11 +7,7 @@ RUN deno install
 RUN deno --allow-env --allow-read --allow-run \
     --allow-write --allow-sys --allow-net \
     prisma generate --no-engine
-RUN deno --allow-env --allow-run esbuild build.ts \
-    --bundle --outfile=build.js --platform=node \
-    --format=esm --packages=external
-RUN deno --allow-env --allow-run --allow-read=bundle.cjs \
-    --allow-write=bundle.cjs build.js
+RUN deno task build:rolldown
 RUN deno compile --no-check \
     --allow-env --allow-read \
     --allow-sys=hostname --allow-net \

@@ -4,10 +4,7 @@ FROM base AS deps
 WORKDIR /app
 COPY . /app/
 RUN npm ci --omit=optional
-RUN npx esbuild build.ts --bundle \
-    --outfile=build.js --platform=node \
-    --format=esm --packages=external
-RUN node build.js
+RUN npm task build:rolldown
 RUN npx prisma generate --no-engine
 
 FROM base AS runner

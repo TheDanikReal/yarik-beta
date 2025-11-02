@@ -5,7 +5,7 @@ WORKDIR /app
 COPY . /app/
 RUN bun install --omit=optional
 RUN bunx prisma generate --no-engine
-RUN bun build.ts
+RUN bun run build:rolldown
 
 FROM base AS runner
 WORKDIR /app/

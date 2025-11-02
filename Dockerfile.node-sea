@@ -4,10 +4,7 @@ FROM base AS build
 WORKDIR /app
 COPY . /app/
 RUN npm install --include=optional
-RUN npx esbuild build.ts --bundle \
-    --outfile=build.js --platform=node \
-    --format=esm --packages=external
-RUN node build.js
+RUN npm run build:rolldown
 RUN npx prisma generate --no-engine
 RUN node --experimental-sea-config sea-config.json
 RUN cp $(command -v node) /yarik
