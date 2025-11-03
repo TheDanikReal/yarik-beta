@@ -1,5 +1,5 @@
-import console from "node:console"
 import type { ChatCompletionTool } from "openai/resources/index.mjs"
+import console from "node:console"
 
 export interface Tools {
     [tool: string]: (args: { description: string }) => string

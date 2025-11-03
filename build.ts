@@ -1,5 +1,5 @@
-import { build } from "esbuild"
 import { readFile, writeFile } from "node:fs/promises"
+import { build } from "esbuild"
 
 const fileName = "bundle.cjs"
 

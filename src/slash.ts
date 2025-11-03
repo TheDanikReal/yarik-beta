@@ -1,11 +1,47 @@
-import { ApplicationCommandType, ButtonBuilder, ButtonStyle, type CacheType, ChannelType, type ChatInputCommandInteraction, ContainerBuilder, ContextMenuCommandBuilder, type GuildTextBasedChannel, type Message, type MessageContextMenuCommandInteraction, MessageFlags, SectionBuilder, SeparatorSpacingSize, SlashCommandBuilder, type TextBasedChannel, TextDisplayBuilder } from "discord.js"
-import { bot, clearChannelCache, type ContextMenu, generateCache, generateResponse, getClient, type Interaction, linePage, logger, type OpenAICompatibleMessage, simplePage, type SlashCommand, type UserData, userData } from "./index.ts"
-import { modalFetchSize } from "./consts.ts"
-import { database } from "./base.ts"
-import { settings } from "./settings.ts"
-import { fetchMaxSize } from "./consts.ts"
-import { clearInterval, setInterval } from "node:timers"
+import type {
+    CacheType,
+    ChatInputCommandInteraction,
+    GuildTextBasedChannel,
+    Message,
+    MessageContextMenuCommandInteraction,
+    TextBasedChannel
+} from "discord.js"
+import type {
+    ContextMenu,
+    Interaction,
+    OpenAICompatibleMessage,
+    SlashCommand,
+    UserData
+} from "./index.ts"
 import process from "node:process"
+import { clearInterval, setInterval } from "node:timers"
+import {
+    ApplicationCommandType,
+    ButtonBuilder,
+    ButtonStyle,
+    ChannelType,
+    ContainerBuilder,
+    ContextMenuCommandBuilder,
+    MessageFlags,
+    SectionBuilder,
+    SeparatorSpacingSize,
+    SlashCommandBuilder,
+    TextDisplayBuilder
+} from "discord.js"
+import { database } from "./base.ts"
+import { fetchMaxSize, modalFetchSize } from "./consts.ts"
+import {
+    bot,
+    clearChannelCache,
+    generateCache,
+    generateResponse,
+    getClient,
+    linePage,
+    logger,
+    simplePage,
+    userData
+} from "./index.ts"
+import { settings } from "./settings.ts"
 
 const setModel: SlashCommand = {
     data: new SlashCommandBuilder()
@@ -30,7 +66,7 @@ const setModel: SlashCommand = {
             const model = interaction.options.getString("model") as UserData["model"]
             await database.editUserIfExists(interaction.user.id, model)
             userData.set(interaction.user.id, {
-                model: model
+                model
             })
             reply.edit(`changed model to ${model}`)
             logger.trace(`changed model for ${interaction.user.id} to ${model}`)
@@ -102,12 +138,10 @@ const generateAnswerAround: ContextMenu = {
             answer = await simplePage(content)
         }
         interaction.editReply(
-            answer[0] + "\n-# " +
-                response.usage?.total_tokens + " tokens used"
+            `${answer[0]}\n-# ${response.usage?.total_tokens} tokens used`
         )
         logger.trace(
-            "generated response for " + interaction.user.id + ": " +
-                response.choices[0].message.content
+            `generated response for ${interaction.user.id}: ${response.choices[0].message.content}`
         )
         if (answer.length > 1) {
             for (const message of answer) {

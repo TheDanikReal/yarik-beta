@@ -1,8 +1,8 @@
+import type { UserData } from "./index.ts"
+import console from "node:console"
 import { promises as fs } from "node:fs"
 import { deserialize } from "node:v8"
 import { database } from "./base.ts"
-import type { UserData } from "./index.ts"
-import console from "node:console"
 
 const servers: Map<string, boolean> = deserialize(await fs.readFile("servers.db"))
 const users: Map<string, UserData> = deserialize(await fs.readFile("users.db"))

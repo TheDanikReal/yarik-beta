@@ -1,9 +1,9 @@
-import * as http from "node:http"
-import { settings } from "./settings.ts"
-import { bot, logger, startBot } from "./index.ts"
 import console from "node:console"
+import http from "node:http"
 import process from "node:process"
 import { setTimeout } from "node:timers"
+import { bot, logger, startBot } from "./index.ts"
+import { settings } from "./settings.ts"
 
 interface DiscordStatus {
     page: {
@@ -19,6 +19,13 @@ interface DiscordStatus {
     }
 }
 
+const port = process.env.PORT || 3000
+const url = process.env.STATUS_URL || "https://discordstatus.com/api/v2/status.json"
+let cached = false
+let cachedMessage = ""
+let discordStatusRefreshed = Date.now()
+let discordStatus = false
+
 async function fetchDiscordStatus() {
     try {
         const response = await fetch(url)
@@ -27,7 +34,6 @@ async function fetchDiscordStatus() {
     } catch (_err) {
         discordStatus = false
     }
-    return
 }
 
 async function cacheMessage() {
@@ -44,16 +50,9 @@ async function cacheMessage() {
 }
 
 startBot()
+fetchDiscordStatus()
 
 logger.info("started")
-
-const port = process.env.PORT || 3000
-const url = process.env.STATUS_URL || "https://discordstatus.com/api/v2/status.json"
-let cached = false
-let cachedMessage = ""
-let discordStatusRefreshed = Date.now()
-let discordStatus = false
-fetchDiscordStatus()
 
 const server = http.createServer(async (req, res) => {
     if (req.url === "/") {
@@ -61,7 +60,6 @@ const server = http.createServer(async (req, res) => {
         if (!cached) await cacheMessage()
         res.end(cachedMessage)
     }
-    return
 })
 
 server.listen(port, () => {

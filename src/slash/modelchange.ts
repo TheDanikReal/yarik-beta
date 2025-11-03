@@ -1,5 +1,7 @@
-import { type ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js"
-import { logger, type UserData, userData } from "./../index.ts"
+import type { ChatInputCommandInteraction } from "discord.js"
+import type { UserData } from "./../index.ts"
+import { SlashCommandBuilder } from "discord.js"
+import { logger, userData } from "./../index.ts"
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -14,7 +16,7 @@ module.exports = {
     async execute(interaction: ChatInputCommandInteraction) {
         const model = interaction.options.getString("model") as UserData["model"]
         userData.set(interaction.user.id, {
-            model: model
+            model
         })
         logger.debug(`changed model for ${interaction.user.id} to ${model}`)
     }

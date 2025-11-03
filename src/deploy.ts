@@ -1,13 +1,12 @@
-import {
-    REST,
-    type RESTPostAPIChatInputApplicationCommandsJSONBody,
-    type RESTPostAPIContextMenuApplicationCommandsJSONBody,
-    Routes
+import type {
+    RESTPostAPIChatInputApplicationCommandsJSONBody,
+    RESTPostAPIContextMenuApplicationCommandsJSONBody
 } from "discord.js"
+import process from "node:process"
+import { REST, Routes } from "discord.js"
+import { logger } from "./index.ts"
 import { commands } from "./slash.ts"
 import "dotenv/config"
-import { logger } from "./index.ts"
-import process from "node:process"
 
 type InteractionRequestData =
     | RESTPostAPIChatInputApplicationCommandsJSONBody

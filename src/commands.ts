@@ -1,18 +1,17 @@
-import {
-    ActionRowBuilder,
-    ButtonBuilder,
-    type ButtonInteraction,
-    type ChatInputCommandInteraction,
-    type Message,
-    type MessageContextMenuCommandInteraction,
-    type OmitPartialGroupDMChannel
+import type {
+    ButtonInteraction,
+    ChatInputCommandInteraction,
+    Message,
+    MessageContextMenuCommandInteraction,
+    OmitPartialGroupDMChannel
 } from "discord.js"
-import { bot, generateAnswer, generateCache, logger, userData } from "./index.ts"
-import { saveData } from "./button.ts"
-import { clearCache, fetchMessages, generateAnswerAround, infoCommand, setModel } from "./slash.ts"
-import { database } from "./base.ts"
-import { fetchMaxSize } from "./consts.ts"
 import process from "node:process"
+import { ActionRowBuilder, ButtonBuilder } from "discord.js"
+import { database } from "./base.ts"
+import { saveData } from "./button.ts"
+import { fetchMaxSize } from "./consts.ts"
+import { bot, generateAnswer, generateCache, logger, userData } from "./index.ts"
+import { clearCache, fetchMessages, generateAnswerAround, infoCommand, setModel } from "./slash.ts"
 
 export async function contextMenuHandler(interaction: MessageContextMenuCommandInteraction) {
     generateAnswerAround.execute(interaction)

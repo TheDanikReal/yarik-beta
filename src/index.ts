@@ -1,26 +1,42 @@
-import { ChannelType, type ChatInputCommandInteraction, Client, type ContextMenuCommandBuilder, Events, GatewayIntentBits, type GuildTextBasedChannel, type Message, type MessageContextMenuCommandInteraction, type OmitPartialGroupDMChannel, Partials, type SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder, type Snowflake } from "discord.js"
-import { buttonCommandHandler, commmandHandler, contextMenuHandler, slashCommandHandler } from "./commands.ts"
+import type {
+    ChatInputCommandInteraction,
+    ContextMenuCommandBuilder,
+    GuildTextBasedChannel,
+    Message,
+    MessageContextMenuCommandInteraction,
+    OmitPartialGroupDMChannel,
+    SlashCommandBuilder,
+    SlashCommandOptionsOnlyBuilder,
+    Snowflake
+} from "discord.js"
 import type { ChatCompletionMessageParam, CompletionUsage } from "openai/resources/index.mjs"
+import console from "node:console"
 // import { toolDescriptions, tools } from "./tools.ts"
 import process from "node:process"
-import { LRUCache } from "lru-cache"
-import pino from "pino"
-import OpenAI from "openai"
-import "dotenv/config"
-import { database } from "./base.ts"
-import { settings } from "./settings.ts"
-import { cacheSize, fetchMaxSize } from "./consts.ts"
-import console from "node:console"
 import { clearInterval, setInterval } from "node:timers"
 import { fileURLToPath } from "node:url"
+import { ChannelType, Client, Events, GatewayIntentBits, Partials } from "discord.js"
+import { LRUCache } from "lru-cache"
+import OpenAI from "openai"
+import pino from "pino"
+import { database } from "./base.ts"
+import {
+    buttonCommandHandler,
+    commmandHandler,
+    contextMenuHandler,
+    slashCommandHandler
+} from "./commands.ts"
+import { cacheSize, fetchMaxSize } from "./consts.ts"
+import { settings } from "./settings.ts"
+import "dotenv/config"
 
 export interface SlashCommand {
-    data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder,
+    data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder
     execute: (interaction: ChatInputCommandInteraction) => Promise<void>
 }
 
 export interface ContextMenu {
-    data: ContextMenuCommandBuilder,
+    data: ContextMenuCommandBuilder
     execute: (interaction: MessageContextMenuCommandInteraction) => Promise<void>
 }
 
@@ -293,7 +309,7 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
             messages: request,
             temperature: 1.0,
             top_p: 1.0,
-            model: model
+            model
             //tools: [{ type: "function", function: { name: "google_search" }}],
             //tool_choice: "auto"
         })
@@ -321,11 +337,11 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
                         response += "```"
                         inCodeBlock = true
                     } else {
-                        response = "```" + response
+                        response = `\`\`\`${response}`
                         inCodeBlock = false
                     }
                 } else if (inCodeBlock) {
-                    response = "```" + response + "```"
+                    response = `\`\`\`${response}\`\`\``
                 }
                 if (i === 1) {
                     message.reply(response)
@@ -376,7 +392,6 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
         logger.error(err)
     }
     clearInterval(sendTyping)
-    return
 }
 
 export async function generateResponse(
@@ -398,8 +413,8 @@ export async function generateResponse(
     logger.trace(`using ${model} model`)
     try {
         return client.chat.completions.create({
-            messages: messages,
-            model: model,
+            messages,
+            model,
             top_p: 1.0,
             temperature: 1.0
         })
