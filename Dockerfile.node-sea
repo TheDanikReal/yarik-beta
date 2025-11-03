@@ -13,6 +13,9 @@ RUN npx postject /yarik NODE_SEA_BLOB sea.blob \    --sentinel-fuse NODE_SEA_FUS
 FROM debian:trixie-slim AS runner
 WORKDIR /
 COPY --from=build /yarik /yarik
+RUN apt update
+# newest node versions require it and slim image doesnt include it
+RUN apt install libatomic1
 EXPOSE 3000
 ENV PORT=3000
 CMD [ "/yarik" ]

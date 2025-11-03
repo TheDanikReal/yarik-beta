@@ -3,8 +3,8 @@ FROM node:current-alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY . /app/
-RUN npm ci --omit=optional
-RUN npm task build:rolldown
+RUN npm ci
+RUN npm run build:rolldown
 RUN npx prisma generate --no-engine
 
 FROM base AS runner
