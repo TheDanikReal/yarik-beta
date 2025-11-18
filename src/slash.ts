@@ -238,7 +238,9 @@ const fetchMessages: SlashCommand = {
         logger.trace(`target: ${fetchUser}`)
         logger.trace(`size: ${fetchCount}`)
         const request: Message[] = []
+        // TODO: move to a single function to follow DRY best practices
         for (const entry of messages.entries()) {
+            if (entry[1].content.startsWith(settings.ignorePrefix)) continue
             request.push(entry[1])
         }
         request.reverse()
@@ -247,7 +249,7 @@ const fetchMessages: SlashCommand = {
                 role: fetchUser === entry.author.id ? "assistant" : "user",
                 content: `${entry.cleanContent}\nauthor: ${entry.author.globalName}`
             })
-            process.stdout.write(entry.cleanContent)
+            logger.trace(entry.cleanContent)
         }
         await message.edit("fetched messages")
     }

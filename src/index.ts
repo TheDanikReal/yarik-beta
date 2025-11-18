@@ -113,6 +113,7 @@ for (let i = 1; i < 10; i++) {
 models.set(defaultModel, openaiClient)
 
 export const guildCache: GuildCache = {}
+/** @deprecated will be removed in next release */
 export const slashCommands = new Map<string, SlashCommand>()
 export const userData = new Map<string, UserData>()
 
@@ -250,9 +251,12 @@ export async function getModelInfo(model: string) {
     return await client.models.retrieve(model)
 }
 
+/**
+ * starts bot with TOKEN enviornment variable
+ */
 export async function startBot(): Promise<boolean> {
     try {
-        bot.login(process.env.TOKEN)
+        await bot.login(process.env.TOKEN)
         return true
     } catch {
         return false
@@ -535,7 +539,7 @@ try {
 
 if (main) {
     try {
-        void bot.login(process.env.TOKEN)
+        await startBot()
         logger.info("bot is active")
     } catch (err) {
         logger.error(err)

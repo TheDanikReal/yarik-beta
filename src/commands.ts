@@ -12,6 +12,7 @@ import { saveData } from "./button.ts"
 import { fetchMaxSize } from "./consts.ts"
 import { bot, generateAnswer, generateCache, logger, userData } from "./index.ts"
 import { clearCache, fetchMessages, generateAnswerAround, infoCommand, setModel } from "./slash.ts"
+import { settings } from "./settings.ts"
 
 export async function contextMenuHandler(interaction: MessageContextMenuCommandInteraction) {
     generateAnswerAround.execute(interaction)
@@ -91,7 +92,9 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         logger.trace(`target: ${target}`)
         logger.trace(`size: ${userSize}`)
         const request: Message[] = []
+        // TODO: move to a single function to follow DRY best practices
         for (const entry of messages.entries()) {
+            if (entry[1].content.startsWith(settings.ignorePrefix)) continue
             request.push(entry[1])
         }
         request.reverse()
@@ -100,7 +103,7 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
                 role: target === entry.author.id ? "assistant" : "user",
                 content: `${entry.cleanContent}\nauthor: ${entry.author.globalName}`
             })
-            process.stdout.write(entry.cleanContent)
+            logger.trace(entry.cleanContent)
         }
         message.reply("fetched messages")
         return true
