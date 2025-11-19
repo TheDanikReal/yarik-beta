@@ -539,7 +539,7 @@ try {
 
 if (main) {
     try {
-        await startBot()
+        void startBot()
         logger.info("bot is active")
     } catch (err) {
         logger.error(err)
