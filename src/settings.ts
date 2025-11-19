@@ -1,3 +1,4 @@
+import type { APIApplicationCommandOptionChoice, RestOrArray } from "discord.js"
 import process from "node:process"
 
 interface Settings {
@@ -6,6 +7,7 @@ interface Settings {
     ignorePrefix: string
     headers?: Record<string, string>
     statusCooldown: number
+    models: RestOrArray<APIApplicationCommandOptionChoice<string>>
 }
 
 export const settings: Settings = {
@@ -19,5 +21,15 @@ export const settings: Settings = {
     headers: {
         "Helicone-Auth": `Bearer ${process.env.HELICONE_TOKEN}`
     },
-    statusCooldown: 5
+    statusCooldown: 5,
+    models: [
+        { name: "qwq", value: "qwen/qwq-32b:free" },
+        { name: "qwen A22B", value: "qwen/qwen3-235b-a22b:free" },
+        { name: "r1 (new)", value: "deepseek/deepseek-r1-0528:free" },
+        { name: "r1 (old)", value: "deepseek/deepseek-r1:free" },
+        { name: "gpt 4o", value: "gpt-4o" },
+        { name: "gpt 4.1", value: "openai/gpt-4.1" },
+        { name: "gemini 2.5 pro", value: "gemini-2.5-pro" },
+        { name: "gemini flash", value: "gemini-2.5-flash-preview-05-20" }
+    ]
 }

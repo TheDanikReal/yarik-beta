@@ -49,14 +49,7 @@ const setModel: SlashCommand = {
         .setDescription("Sets model of bot")
         .addStringOption((option) =>
             option.setName("model").addChoices(
-                { name: "qwq", value: "qwen/qwq-32b:free" },
-                { name: "qwen A22B", value: "qwen/qwen3-235b-a22b:free" },
-                { name: "r1 (new)", value: "deepseek/deepseek-r1-0528:free" },
-                { name: "r1 (old)", value: "deepseek/deepseek-r1:free" },
-                { name: "gpt 4o", value: "gpt-4o" },
-                { name: "gpt 4.1", value: "openai/gpt-4.1" },
-                { name: "gemini 2.5 pro", value: "gemini-2.5-pro" },
-                { name: "gemini flash", value: "gemini-2.5-flash-preview-05-20" }
+                ...settings.models
             ).setDescription("changes used model user side")
                 .setRequired(true)
         ),

@@ -5,7 +5,6 @@ import type {
     MessageContextMenuCommandInteraction,
     OmitPartialGroupDMChannel
 } from "discord.js"
-import process from "node:process"
 import { ActionRowBuilder, ButtonBuilder } from "discord.js"
 import { database } from "./base.ts"
 import { saveData } from "./button.ts"
