@@ -1,9 +1,11 @@
 import type { Prisma } from "../generated/prisma/client.ts"
 import { LRUCache } from "lru-cache"
 import { PrismaClient } from "../generated/prisma/client.ts"
+import { PrismaPg } from "@prisma/adapter-pg"
 
 class PrismaDatabase {
     prisma: PrismaClient
+    adapter: PrismaPg
     cacheUsers: LRUCache<string, Partial<Prisma.UserCreateInput>>
     cacheChannels: LRUCache<string, Partial<Prisma.ChannelCreateInput>>
     constructor() {
@@ -15,7 +17,8 @@ class PrismaDatabase {
             ttl: 1000 * 60 * 30,
             max: 100
         })
-        this.prisma = new PrismaClient()
+        this.adapter = new PrismaPg({})
+        this.prisma = new PrismaClient({ adapter: this.adapter })
         this.prisma.$connect()
     }
     async connect() {

@@ -7,7 +7,8 @@ await build({
     entryPoints: ["src/api.ts"],
     bundle: true,
     outfile: fileName,
-    platform: "node"
+    platform: "node",
+    packages: process.argv.some((val) => val === "--no-bundle") ? "external" : "bundle"
 })
 
 const regex = /import_meta[1-9]*\.url/g

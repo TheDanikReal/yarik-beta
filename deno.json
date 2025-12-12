@@ -1,10 +1,11 @@
 {
     "lock": false,
     "tasks": {
-        "start": "deno run --allow-env --allow-read=.env,prisma/ --allow-net --allow-sys=hostname src/index.ts",
+        "start": "deno run --allow-env --allow-read=.env,prisma/,/etc/alpine-release --allow-net --allow-sys=hostname src/index.ts",
         "build": "deno run --allow-env --allow-run --allow-read=bundle.cjs --allow-write=bundle.cjs build.ts",
         "build:rolldown": "deno run --allow-env --allow-ffi --allow-read npm:rolldown -c rolldown.config.mjs",
-        "deploy": "deno run --allow-env --allow-ffi --allow-read --allow-sys=hostname src/deploy.ts"
+        "deploy": "deno run --allow-env --allow-ffi --allow-read --allow-sys=hostname src/deploy.ts",
+        "dev": "deno task start | pino-pretty -c"
     },
     "fmt": {
         "lineWidth": 100,
