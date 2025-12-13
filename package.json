@@ -7,7 +7,8 @@
         "build:esbuild": "esbuild build.ts --bundle --outfile=build.js --platform=node --format=esm --packages=external && node build.js",
         "build:rolldown": "rolldown -c rolldown.config.mjs",
         "deps-check": "taze major",
-        "deploy": "tsc --build && node dist/deploy.ts"
+        "deploy": "tsc --build && node dist/deploy.ts",
+        "generate-db": "prisma generate"
     },
     "dependencies": {
         "@prisma/adapter-pg": "^7.1.0",
@@ -21,7 +22,7 @@
     },
     "optionalDependencies": {
         "@antfu/eslint-config": "^6.6.1",
-        "eslint": "^9.39.1",
+        "eslint": "^9.39.2",
         "postject": "^1.0.0-alpha.6"
     },
     "devDependencies": {

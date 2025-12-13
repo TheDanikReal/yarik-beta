@@ -4,9 +4,7 @@ FROM base AS deps
 WORKDIR /app
 COPY . /app/
 RUN deno install
-RUN deno --allow-env --allow-read --allow-run \
-    --allow-write --allow-sys --allow-net \
-    prisma generate --no-engine
+RUN deno run generate-db
 RUN deno task build:rolldown
 RUN deno compile --no-check \
     --allow-env --allow-read \

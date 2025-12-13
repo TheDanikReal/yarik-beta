@@ -4,8 +4,8 @@ FROM base AS deps
 WORKDIR /app
 COPY . /app/
 RUN npm ci
+RUN npm run generate-db
 RUN npm run build:rolldown
-RUN npx prisma generate --no-engine
 
 FROM base AS runner
 WORKDIR /app/

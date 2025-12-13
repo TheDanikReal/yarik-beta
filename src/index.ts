@@ -15,7 +15,7 @@ import console from "node:console"
 import process from "node:process"
 import { clearInterval, setInterval } from "node:timers"
 import { fileURLToPath } from "node:url"
-import { ChannelType, Client, Events, GatewayIntentBits, Partials } from "discord.js"
+import { ChannelType, Client, Events, GatewayIntentBits, MessageActivityType, Partials } from "discord.js"
 import { LRUCache } from "lru-cache"
 import OpenAI from "openai"
 import pino from "pino"
@@ -291,7 +291,7 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
 
     cache.set(message.id, {
         role: "user",
-        content: `${content}\nauthor: ${message.author.displayName}`
+        content: `${message.author.displayName}: ${content}`
     })
 
     const request: OpenAICompatibleMessage[] = []

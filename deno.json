@@ -5,7 +5,8 @@
         "build": "deno run --allow-env --allow-run --allow-read=bundle.cjs --allow-write=bundle.cjs build.ts",
         "build:rolldown": "deno run --allow-env --allow-ffi --allow-read npm:rolldown -c rolldown.config.mjs",
         "deploy": "deno run --allow-env --allow-ffi --allow-read --allow-sys=hostname src/deploy.ts",
-        "dev": "deno task start | pino-pretty -c"
+        "dev": "deno task start | pino-pretty -c",
+        "generate-db": "deno run --allow-env --allow-read --allow-write --allow-run --allow-sys npm:prisma generate"
     },
     "fmt": {
         "lineWidth": 100,

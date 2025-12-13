@@ -4,8 +4,8 @@ FROM base AS build
 WORKDIR /app
 COPY . /app/
 RUN npm install --include=optional
+RUN npm run generate-db
 RUN npm run build:rolldown
-RUN npx prisma generate --no-engine
 RUN node --experimental-sea-config sea-config.json
 RUN cp $(command -v node) /yarik
 RUN npx postject /yarik NODE_SEA_BLOB sea.blob \    --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2
