@@ -3,7 +3,7 @@ FROM oven/bun:alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY . /app/
-RUN bun install --omit=optional
+RUN bun install
 RUN bun run generate-db
 RUN bun run build:rolldown
 

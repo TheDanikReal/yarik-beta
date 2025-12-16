@@ -1,0 +1,16 @@
+FROM oven/bun:slim AS base
+
+FROM base AS deps
+WORKDIR /app
+COPY . /app/
+RUN bun install
+RUN bun run generate-db
+RUN bun run build:rolldown
+RUN bun build --compile --target bun-linux-x64 --bytecode ./bundle.cjs --outfile=/yarik
+
+FROM debian:trixie-slim AS runner
+WORKDIR /
+COPY --from=deps /yarik /yarik
+EXPOSE 3000
+ENV PORT=3000
+CMD [ "/yarik" ]
