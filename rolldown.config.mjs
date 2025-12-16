@@ -1,3 +1,4 @@
+// @ts-check
 import { defineConfig } from "rolldown"
 import process from "node:process"
 
@@ -6,7 +7,8 @@ export default defineConfig({
     output: {
         format: "cjs",
         minify: process.argv.includes("--no-minify") ? false : true,
-        file: "bundle.cjs"
+        file: "bundle.cjs",
+        inlineDynamicImports: true
     }
     //external: ["bufferutil"]
 })
