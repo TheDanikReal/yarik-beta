@@ -23,13 +23,14 @@ export const settings: Settings = {
     },
     statusCooldown: 5,
     models: [
-        { name: "qwq", value: "qwen/qwq-32b:free" },
-        { name: "qwen A22B", value: "qwen/qwen3-235b-a22b:free" },
-        { name: "r1 (new)", value: "deepseek/deepseek-r1-0528:free" },
-        { name: "r1 (old)", value: "deepseek/deepseek-r1:free" },
+        { name: "devstral", value: "mistralai/devstral-2512:free" },
+        { name: "qwen coder", value: "qwen/qwen3-coder:free" },
+        { name: "r1t2 chimera", value: "tngtech/deepseek-r1t2-chimera:free" },
+        { name: "gpt oss (120b)", value: "openai/gpt-oss-120b:free" },
         { name: "gpt 4o", value: "gpt-4o" },
         { name: "gpt 4.1", value: "openai/gpt-4.1" },
-        { name: "gemini 2.5 pro", value: "gemini-2.5-pro" },
-        { name: "gemini flash", value: "gemini-2.5-flash-preview-05-20" }
+        { name: "hermes", value: "nousresearch/hermes-3-llama-3.1-405b:free" },
+        { name: "xiaomi", value: "xiaomi/mimo-v2-flash:free" },
+        { name: "gemini 3.0 flash", value: "gemini-3-flash-preview" }
     ]
 }
