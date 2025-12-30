@@ -15,7 +15,7 @@ import console from "node:console"
 import process from "node:process"
 import { clearInterval, setInterval } from "node:timers"
 import { fileURLToPath } from "node:url"
-import { ChannelType, Client, Events, GatewayIntentBits, MessageActivityType, Partials } from "discord.js"
+import { ChannelType, Client, Events, GatewayIntentBits, Partials } from "discord.js"
 import { LRUCache } from "lru-cache"
 import OpenAI from "openai"
 import pino from "pino"
@@ -77,6 +77,7 @@ export const bot = new Client({
     partials: [Partials.Channel]
 })
 const defaultModel = process.env.MODEL_NAME
+const fallbackModel = process.env.FALLBACK_MODEL || undefined
 const openaiClient = new OpenAI({
     apiKey: process.env.API_TOKEN,
     baseURL: process.env.API_ENDPOINT,
@@ -246,6 +247,19 @@ export async function getModels(): Promise<string[]> {
     return result
 }
 
+/**
+ * @returns an array with first element being client and second is status,
+ * model was found or used default client
+ */
+export async function getModel(model: string): Promise<[OpenAI, boolean]> {
+    const userClient = models.get(model)
+    if (userClient) {
+        return [userClient, true]
+    } else {
+        return [openaiClient, false]
+    }
+}
+
 export async function getModelInfo(model: string) {
     const client = openaiClient
     return await client.models.retrieve(model)
@@ -273,13 +287,27 @@ export async function generateCache(channelId: Snowflake) {
     return guildCache[channelId]
 }
 
-export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<boolean>>) {
+export async function generateAnswer(
+    message: OmitPartialGroupDMChannel<Message<boolean>>,
+    customModel?: string
+) {
     if (message.content.startsWith(settings.ignorePrefix)) return
 
     const cache = await generateCache(message.channelId)
-    const preferences = await getClient(message.author.id)
-    const client = preferences[0]
-    const model = preferences[1]
+    let client: OpenAI
+    let model: string
+    if (customModel) {
+        const modelInfo =  await getModel(customModel)
+        if (modelInfo[1] == false) {
+            logger.debug(`cant find a custom model: ${customModel}, using default one`)
+        }
+        client = modelInfo[0]
+        model = customModel
+    } else {
+        const preferences = await getClient(message.author.id)
+        client = preferences[0]
+        model = preferences[1]
+    }
     let content = message.content
     let referenceInfo = ""
 
@@ -369,6 +397,9 @@ export async function generateAnswer(message: OmitPartialGroupDMChannel<Message<
         let additionalData = `-# ${usage.total_tokens} tokens used with ${finishReason} end reason`
         if (message.attachments.size) {
             additionalData += ", attachments were ignored"
+        }
+        if (customModel) {
+            additionalData += ", used fallback model"
         }
         const answer = `${response}\n${additionalData}`
         if (answer.length / 2000 >= 1) {
@@ -473,6 +504,8 @@ bot.on(Events.MessageCreate, async (message) => {
             generateAnswer(message)
         } catch (err) {
             logger.error(err)
+            if (!fallbackModel || (await getClient(message.author.id))[1] == fallbackModel) return
+            generateAnswer(message, fallbackModel)
         }
     }
 })
