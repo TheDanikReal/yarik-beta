@@ -237,7 +237,7 @@ export async function fixMarkup(messages: string[]): Promise<string[]> {
 }
 
 export async function getModels(): Promise<string[]> {
-    const result = []
+    const result: string[] = []
     result.push(defaultModel)
     console.log(modelsCount)
     for (let i = 1; i < modelsCount; i++) {
@@ -289,7 +289,8 @@ export async function generateCache(channelId: Snowflake) {
 
 export async function generateAnswer(
     message: OmitPartialGroupDMChannel<Message<boolean>>,
-    customModel?: string
+    customModel?: string,
+    fallbackEnabled: boolean = true
 ) {
     if (message.content.startsWith(settings.ignorePrefix)) return
 
@@ -425,6 +426,11 @@ export async function generateAnswer(
     } catch (err) {
         message.reply(settings.error)
         logger.error(err)
+        clearInterval(sendTyping)
+        if (fallbackEnabled &&
+            (!fallbackModel || (await getClient(message.author.id))[1] == fallbackModel)
+        ) return
+        generateAnswer(message, fallbackModel)
     }
     clearInterval(sendTyping)
 }
@@ -504,8 +510,6 @@ bot.on(Events.MessageCreate, async (message) => {
             generateAnswer(message)
         } catch (err) {
             logger.error(err)
-            if (!fallbackModel || (await getClient(message.author.id))[1] == fallbackModel) return
-            generateAnswer(message, fallbackModel)
         }
     }
 })
