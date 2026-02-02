@@ -427,10 +427,12 @@ export async function generateAnswer(
         message.reply(settings.error)
         logger.error(err)
         clearInterval(sendTyping)
-        if (fallbackEnabled &&
-            (!fallbackModel || (await getClient(message.author.id))[1] == fallbackModel)
+        if (
+            !fallbackEnabled ||
+            !fallbackModel ||
+            (await getClient(message.author.id))[1] == fallbackModel
         ) return
-        generateAnswer(message, fallbackModel)
+        await generateAnswer(message, fallbackModel, false)
     }
     clearInterval(sendTyping)
 }
