@@ -8,5 +8,7 @@ export default config({
         "@typescript-eslint/prefer-nullish-coalescing": "off",
         // Allow top-level await in modern modules
         "antfu/no-top-level-await": "off",
+        // Allow bracket notation for object property access (e.g., object["VALUE"])
+        "dot-notation": "off",
     }
 })

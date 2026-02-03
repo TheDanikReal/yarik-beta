@@ -18,7 +18,7 @@ class PrismaDatabase {
             ttl: 1000 * 60 * 30,
             max: 100
         })
-        const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL})
+        const adapter = new PrismaPg({ connectionString: process.env["DATABASE_URL"]})
         this.prisma = new PrismaClient({ adapter })
     }
     async connect() {
