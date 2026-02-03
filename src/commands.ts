@@ -10,8 +10,8 @@ import { database } from "./base.ts"
 import { saveData } from "./button.ts"
 import { fetchMaxSize } from "./consts.ts"
 import { bot, generateAnswer, generateCache, logger, userData } from "./index.ts"
-import { clearCache, fetchMessages, generateAnswerAround, infoCommand, setModel } from "./slash.ts"
 import { settings } from "./settings.ts"
+import { clearCache, fetchMessages, generateAnswerAround, infoCommand, setModel } from "./slash.ts"
 
 export async function contextMenuHandler(interaction: MessageContextMenuCommandInteraction) {
     generateAnswerAround.execute(interaction)
@@ -81,7 +81,7 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         const cache = await generateCache(message.channelId)
         const options = message.content.split(" ")
         if (!options[2]) {
-            options[2] = bot.user?.id!
+            options[2] = bot.user?.id || ""
         }
         logger.trace(`generating cache for ${message.channelId}with settings: ${options}`)
         const userSize = Number(options[3]) | fetchMaxSize

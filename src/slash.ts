@@ -13,7 +13,6 @@ import type {
     SlashCommand,
     UserData
 } from "./index.ts"
-import process from "node:process"
 import { clearInterval, setInterval } from "node:timers"
 import {
     ApplicationCommandType,

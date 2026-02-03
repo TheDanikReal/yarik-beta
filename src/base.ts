@@ -1,7 +1,8 @@
 import type { Prisma } from "../generated/prisma/client.ts"
+import process from "node:process"
+import { PrismaPg } from "@prisma/adapter-pg"
 import { LRUCache } from "lru-cache"
 import { PrismaClient } from "../generated/prisma/client.ts"
-import { PrismaPg } from "@prisma/adapter-pg"
 import "dotenv/config"
 
 class PrismaDatabase {
@@ -17,7 +18,7 @@ class PrismaDatabase {
             ttl: 1000 * 60 * 30,
             max: 100
         })
-        const adapter = new PrismaPg({ connectionString: process.env["DATABASE_URL"]})
+        const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL})
         this.prisma = new PrismaClient({ adapter })
     }
     async connect() {
