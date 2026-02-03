@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises"
+import process from "node:process"
 import { build } from "esbuild"
 
 const fileName = "bundle.cjs"
@@ -8,7 +9,7 @@ await build({
     bundle: true,
     outfile: fileName,
     platform: "node",
-    packages: process.argv.some((val) => val === "--no-bundle") ? "external" : "bundle"
+    packages: process.argv.includes("--no-bundle") ? "external" : "bundle"
 })
 
 const regex = /import_meta[1-9]*\.url/g
