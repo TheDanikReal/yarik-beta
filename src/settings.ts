@@ -3,7 +3,8 @@ import process from "node:process"
 
 interface Settings {
     system: string
-    error: string
+    error: string,
+    fallbackAttempt: string,
     ignorePrefix: string
     headers?: Record<string, string>
     statusCooldown: number
@@ -17,6 +18,7 @@ export const settings: Settings = {
         ` A friend who helps with problems. I have a YouTube channel with 1 thousand subscribers.\n` +
         `personality traits: smart`,
     error: "message creation didn't finish successfully",
+    fallbackAttempt: "message creation didn't finish successfully, retrying with a fallback model",
     ignorePrefix: "@ignore",
     headers: {
         "Helicone-Auth": `Bearer ${process.env.HELICONE_TOKEN}`

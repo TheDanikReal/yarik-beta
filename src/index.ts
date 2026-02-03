@@ -424,15 +424,24 @@ export async function generateAnswer(
         }
         cache.set(reply.id, { role: "assistant", content: fullResponse })
     } catch (err) {
-        message.reply(settings.error)
         logger.error(err)
         clearInterval(sendTyping)
         if (
             !fallbackEnabled ||
             !fallbackModel ||
             (await getClient(message.author.id))[1] == fallbackModel
-        ) return
-        await generateAnswer(message, fallbackModel, false)
+        ) {
+            message.reply(settings.error)
+        } else {
+            message.reply({
+                content: settings.fallbackAttempt,
+                allowedMentions: {
+                    repliedUser: false
+                }
+            })
+            await generateAnswer(message, fallbackModel, false)
+        }
+        return
     }
     clearInterval(sendTyping)
 }
