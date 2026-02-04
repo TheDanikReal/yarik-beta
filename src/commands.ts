@@ -81,7 +81,7 @@ export async function commmandHandler(message: OmitPartialGroupDMChannel<Message
         const cache = await generateCache(message.channelId)
         const options = message.content.split(" ")
         if (!options[2]) {
-            options[2] = bot.user?.id || ""
+            options[2] = bot.user?.id ?? ""
         }
         logger.trace(`generating cache for ${message.channelId}with settings: ${options}`)
         const userSize = Number(options[3]) | fetchMaxSize

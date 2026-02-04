@@ -299,7 +299,7 @@ export async function generateAnswer(
     let model: string
     if (customModel) {
         const modelInfo =  await getModel(customModel)
-        if (modelInfo[1] === false) {
+        if (modelInfo[1] == false) {
             logger.debug(`cant find a custom model: ${customModel}, using default one`)
         }
         client = modelInfo[0]
