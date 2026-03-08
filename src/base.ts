@@ -1,8 +1,7 @@
 import type { Prisma } from "../generated/prisma/client.ts"
-import process from "node:process"
-import { PrismaPg } from "@prisma/adapter-pg"
 import { LRUCache } from "lru-cache"
 import { PrismaClient } from "../generated/prisma/client.ts"
+import { PrismaPg } from "@prisma/adapter-pg"
 import "dotenv/config"
 
 class PrismaDatabase {

@@ -31,7 +31,7 @@ async function fetchDiscordStatus() {
         const response = await fetch(url)
         const status = await response.json() as DiscordStatus
         discordStatus = status.status?.indicator === "none"
-    } catch {
+    } catch (_err) {
         discordStatus = false
     }
 }

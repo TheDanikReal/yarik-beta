@@ -299,7 +299,7 @@ export async function generateAnswer(
     let model: string
     if (customModel) {
         const modelInfo =  await getModel(customModel)
-        if (modelInfo[1] === false) {
+        if (modelInfo[1] == false) {
             logger.debug(`cant find a custom model: ${customModel}, using default one`)
         }
         client = modelInfo[0]
@@ -429,7 +429,7 @@ export async function generateAnswer(
         if (
             !fallbackEnabled ||
             !fallbackModel ||
-            (await getClient(message.author.id))[1] === fallbackModel
+            (await getClient(message.author.id))[1] == fallbackModel
         ) {
             message.reply(settings.error)
         } else {
@@ -470,7 +470,7 @@ export async function generateResponse(
             top_p: 1.0,
             temperature: 1.0
         })
-    } catch {
+    } catch (_err) {
         return false
     }
 }
@@ -492,7 +492,7 @@ export async function getClient(user: string): Promise<[OpenAI, string]> {
     }
 }
 
-async function _generateRequest(
+async function generateRequest(
     channelId: string,
     author: string
 ): Promise<OpenAICompatibleMessage[]> {
@@ -581,7 +581,7 @@ let main = false
 
 try {
     main = !!require.main
-} catch {
+} catch (_err) {
     main = process.argv[1] === fileURLToPath(url)
 }
 

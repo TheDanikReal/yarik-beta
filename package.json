@@ -9,9 +9,7 @@
         "build:rolldown": "rolldown -c rolldown.config.mjs",
         "deps-check": "taze major",
         "deploy": "tsc --build && node dist/src/deploy.ts",
-        "generate-db": "prisma generate",
-        "lint": "eslint . --config eslint.config.mjs",
-        "lint:fix": "eslint . --fix --config eslint.config.mjs"
+        "generate-db": "prisma generate"
     },
     "dependencies": {
         "@prisma/adapter-pg": "^7.2.0",
