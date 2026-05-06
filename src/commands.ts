@@ -10,8 +10,9 @@ import { database } from "./base.ts"
 import { saveData } from "./button.ts"
 import { fetchMaxSize } from "./consts.ts"
 import { bot, generateAnswer, generateCache, logger, userData } from "./index.ts"
-import { clearCache, fetchMessages, generateAnswerAround, infoCommand, setModel } from "./slash.ts"
+import { clearCache, fetchMessages, infoCommand, setModel } from "./slash.ts"
 import { settings } from "./settings.ts"
+import { generateAnswerAround } from "./context.ts"
 
 export async function contextMenuHandler(interaction: MessageContextMenuCommandInteraction) {
     generateAnswerAround.execute(interaction)

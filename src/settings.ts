@@ -33,6 +33,7 @@ export const settings: Settings = {
         { name: "gpt 4.1", value: "openai/gpt-4.1" },
         { name: "hermes", value: "nousresearch/hermes-3-llama-3.1-405b:free" },
         { name: "xiaomi", value: "xiaomi/mimo-v2-flash:free" },
-        { name: "gemini 3.0 flash", value: "gemini-3-flash-preview" }
+        { name: "gemini 3 flash", value: "gemini-3-flash-preview" },
+        { name: "gemini 3 flash lite", value: "gemini-3.1-flash-lite-preview" }
     ]
 }

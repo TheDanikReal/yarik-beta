@@ -5,7 +5,8 @@ import type {
 import process from "node:process"
 import { REST, Routes } from "discord.js"
 import { logger } from "./index.ts"
-import { commands } from "./slash.ts"
+import { commands as slashCommands } from "./slash.ts"
+import { commands as contextCommands } from "./context.ts"
 import "dotenv/config"
 
 type InteractionRequestData =
@@ -20,7 +21,7 @@ const rest = new REST().setToken(process.env.TOKEN)
 
 const requestData: InteractionRequestData[] = []
 
-for (const command of commands) {
+for (const command of [...slashCommands, ...contextCommands]) {
     logger.info(`adding command ${command.data.name} to request`)
     requestData.push(command.data.toJSON())
 }
