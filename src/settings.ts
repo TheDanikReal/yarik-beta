@@ -25,14 +25,11 @@ export const settings: Settings = {
     },
     statusCooldown: 5,
     models: [
-        { name: "devstral", value: "mistralai/devstral-2512:free" },
         { name: "qwen coder", value: "qwen/qwen3-coder:free" },
-        { name: "r1t2 chimera", value: "tngtech/deepseek-r1t2-chimera:free" },
         { name: "gpt oss (120b)", value: "openai/gpt-oss-120b:free" },
         { name: "gpt 4o", value: "gpt-4o" },
         { name: "gpt 4.1", value: "openai/gpt-4.1" },
-        { name: "hermes", value: "nousresearch/hermes-3-llama-3.1-405b:free" },
-        { name: "xiaomi", value: "xiaomi/mimo-v2-flash:free" },
+        { name: "baidu cobuddy", value: "baidu/cobuddy:free" },
         { name: "gemini 3 flash", value: "gemini-3-flash-preview" },
         { name: "gemini 3 flash lite", value: "gemini-3.1-flash-lite-preview" }
     ]
